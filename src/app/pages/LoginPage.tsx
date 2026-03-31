@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, Eye, EyeOff, Lock, User } from "lucide-react";
+import { useAuth } from "../hooks";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login, loading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,13 +21,14 @@ export function LoginPage() {
     }
     setLoading(true);
     setTimeout(() => {
+      const result = login({ username, password });
       setLoading(false);
-      if (username === "admin" && password === "admin") {
+      if (result.success) {
         navigate("/dashboard");
       } else {
-        setError("Invalid credentials. Try admin / admin.");
+        setError(result.error || "Invalid credentials.");
       }
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -147,7 +150,10 @@ export function LoginPage() {
                 className="bg-blue-50 border border-blue-200 text-blue-600 px-4 py-3 rounded-xl animate-fade-in animation-delay-500"
                 style={{ fontSize: "0.8rem" }}
               >
-                Demo: username <strong>admin</strong> / password <strong>admin</strong>
+                <strong>Demo accounts:</strong><br />
+                admin / admin123<br />
+                doctor / doctor123<br />
+                nurse / nurse123
               </div>
 
               {/* Submit */}
