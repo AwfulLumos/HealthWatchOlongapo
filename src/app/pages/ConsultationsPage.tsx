@@ -13,22 +13,22 @@ function ConsultationModal({ consultation, onClose, mode }: { consultation?: any
   const [tab, setTab] = useState<"info" | "vitals" | "prescription">("info");
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-scale-in">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-scale-in">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-gray-900" style={{ fontSize: "1.1rem", fontWeight: 700 }}>
               {mode === "add" ? "New Consultation" : `Consultation — ${consultation?.id}`}
             </h2>
             {consultation && <p className="text-gray-400" style={{ fontSize: "0.8rem" }}>{consultation.patient} &bull; {consultation.date}</p>}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:rotate-90">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 px-6 bg-gray-50/50">
+        <div className="flex border-b border-gray-100 px-6 bg-gray-50/50 flex-shrink-0">
           {[
             { key: "info", label: "Consultation Info" },
             { key: "vitals", label: "Vital Signs" },
@@ -45,7 +45,7 @@ function ConsultationModal({ consultation, onClose, mode }: { consultation?: any
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {tab === "info" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -193,7 +193,7 @@ function ConsultationModal({ consultation, onClose, mode }: { consultation?: any
         </div>
 
         {mode !== "view" && (
-          <div className="p-6 border-t border-gray-100 flex gap-3 justify-end bg-gray-50/50">
+          <div className="p-6 border-t border-gray-100 flex gap-3 justify-end bg-gray-50/50 flex-shrink-0">
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:border-gray-300" style={{ fontSize: "0.875rem" }}>
               Cancel
             </button>
@@ -216,7 +216,7 @@ export function ConsultationsPage() {
   );
 
   return (
-    <div className="p-6 space-y-5 animate-fade-in">
+    <div className="p-6 space-y-5">
       <div className="flex items-center justify-between animate-fade-in-up">
         <div>
           <h1 className="text-gray-900" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Consultations</h1>

@@ -4,15 +4,15 @@ import { mockPrescriptions } from "../statics/prescriptions";
 
 function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-scale-in">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-gray-900" style={{ fontSize: "1.1rem", fontWeight: 700 }}>Prescription Details</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:rotate-90">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Rx Header */}
           <div className="bg-blue-50 rounded-xl p-4 mb-4 flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -40,7 +40,7 @@ function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
             ))}
           </div>
         </div>
-        <div className="p-6 border-t border-gray-100 flex justify-end">
+        <div className="p-6 border-t border-gray-100 flex justify-end flex-shrink-0">
           <button onClick={onClose} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" style={{ fontSize: "0.875rem", fontWeight: 600 }}>
             Close
           </button>
@@ -66,7 +66,7 @@ export function PrescriptionsPage() {
   });
 
   return (
-    <div className="p-6 space-y-5 animate-fade-in">
+    <div className="p-6 space-y-5">
       <div className="flex items-center justify-between animate-fade-in-up">
         <div>
           <h1 className="text-gray-900" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Prescriptions</h1>
