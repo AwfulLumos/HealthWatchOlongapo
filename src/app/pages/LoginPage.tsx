@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, Eye, EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useAuth } from "../hooks";
+import { LoadingScreen } from "../components/LoadingScreen";
+import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -11,6 +13,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
+  const [loggedInUserName, setLoggedInUserName] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,144 +28,146 @@ export function LoginPage() {
       const result = login({ username, password });
       setLoading(false);
       if (result.success) {
-        navigate("/dashboard");
+        // Capitalize the username for display
+        const displayName = result.user?.username 
+          ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
+          : username;
+        setLoggedInUserName(displayName);
+        setShowLoadingScreen(true);
       } else {
         setError(result.error || "Invalid credentials.");
       }
     }, 500);
   };
 
+  const handleLoadingComplete = () => {
+    navigate("/dashboard");
+  };
+
+  if (showLoadingScreen) {
+    return (
+      <LoadingScreen 
+        userName={loggedInUserName} 
+        onComplete={handleLoadingComplete}
+        duration={2500}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background blobs with floating animation */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 rounded-full bg-white blur-3xl animate-float" />
-        <div className="absolute bottom-[-60px] right-[-60px] w-[500px] h-[500px] rounded-full bg-blue-400 blur-3xl animate-float animation-delay-200" style={{ animationDuration: '8s' }} />
-        <div className="absolute top-1/2 left-1/3 w-72 h-72 rounded-full bg-indigo-300 blur-3xl animate-float animation-delay-400" style={{ animationDuration: '7s' }} />
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+      {/* Subtle Background Pattern */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-full" style={{ 
+          backgroundImage: 'radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.2) 2%, transparent 0%)',
+          backgroundSize: '50px 50px'
+        }} />
       </div>
 
-      <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-16">
+      <div className="relative w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 sm:gap-10 lg:gap-16">
 
         {/* LEFT — Logo & Branding */}
         <div className="flex-1 flex flex-col items-center text-center animate-fade-in-up">
-          {/* Logo */}
-          <div className="mb-8">
-            <div className="w-48 h-48 md:w-64 md:h-64 bg-white rounded-3xl shadow-2xl flex items-center justify-center hover-lift hover-glow transition-all duration-300 cursor-default">
-              <Activity className="w-24 h-24 md:w-32 md:h-32 text-blue-700" />
+          {/* Logo - Increased by 80% */}
+          <div className="mb-5 sm:mb-7">
+            <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-60 md:h-60 lg:w-72 lg:h-72 bg-white/95 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden hover-lift transition-all duration-300 cursor-default">
+              <img src={logoImage} alt="Health Watch Olongapo" className="w-full h-full object-cover" />
             </div>
           </div>
 
-          <h1
-            className="text-white mb-3"
-            style={{ fontSize: "2.5rem", fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.02em" }}
-          >
+          {/* Title - Increased by 80% */}
+          <h1 className="text-white mb-2 sm:mb-3 font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight">
             Health Watch<br />Olongapo
           </h1>
-          <p
-            className="text-blue-200"
-            style={{ fontSize: "1.05rem", lineHeight: 1.6 }}
-          >
+          
+          {/* Subtitle - Increased by 80% */}
+          <p className="text-blue-100 font-medium mb-5 sm:mb-7 text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed">
             Barangay Health Center<br />Management System
           </p>
 
-          {/* Decorative divider */}
-          <div className="flex items-center gap-3 mt-10">
-            <div className="w-10 h-0.5 bg-blue-400 rounded-full" />
-            <span className="text-blue-300" style={{ fontSize: "0.8rem" }}>Olongapo City Health Office</span>
-            <div className="w-10 h-0.5 bg-blue-400 rounded-full" />
+          {/* Decorative divider - Hidden on small screens */}
+          <div className="hidden sm:flex items-center gap-3">
+            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
+            <span className="text-blue-200 font-medium text-xs sm:text-sm">Olongapo City Health Office</span>
+            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
           </div>
         </div>
 
-        {/* RIGHT — Login Card */}
-        <div className="w-full md:w-[420px] flex-shrink-0 animate-fade-in-up animation-delay-200">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 hover:shadow-[0_25px_60px_rgba(0,0,0,0.2)] transition-shadow duration-500">
-            <h2
-              className="text-gray-900 mb-1"
-              style={{ fontSize: "1.6rem", fontWeight: 700 }}
-            >
+        {/* RIGHT — Login Card - Increased by 80% */}
+        <div className="w-full sm:w-[450px] lg:w-[480px] flex-shrink-0 animate-fade-in-up animation-delay-200">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8">
+            {/* Header */}
+            <h2 className="text-gray-900 mb-1.5 sm:mb-2 font-bold text-xl sm:text-2xl">
               Sign In
             </h2>
-            <p className="text-gray-500 mb-7" style={{ fontSize: "0.9rem" }}>
+            <p className="text-gray-500 mb-5 sm:mb-6 font-medium text-sm sm:text-base">
               Enter your credentials to access the system
             </p>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
               {/* Username */}
               <div className="animate-fade-in animation-delay-300">
-                <label
-                  className="block text-gray-700 mb-1.5"
-                  style={{ fontSize: "0.875rem", fontWeight: 600 }}
-                >
+                <label className="block text-gray-700 mb-1.5 font-semibold text-sm sm:text-base">
                   Username
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors group-focus-within:text-blue-600" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
-                    style={{ fontSize: "0.875rem" }}
+                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-sm sm:text-base"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div className="animate-fade-in animation-delay-400">
-                <label
-                  className="block text-gray-700 mb-1.5"
-                  style={{ fontSize: "0.875rem", fontWeight: 600 }}
-                >
+                <label className="block text-gray-700 mb-1.5 font-semibold text-sm sm:text-base">
                   Password
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors group-focus-within:text-blue-600" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
-                    style={{ fontSize: "0.875rem" }}
+                    className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-sm sm:text-base"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors hover:scale-110 active:scale-95"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               {/* Error */}
               {error && (
-                <div
-                  className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl animate-fade-in-down"
-                  style={{ fontSize: "0.875rem" }}
-                >
+                <div className="bg-red-50 border-2 border-red-200 text-red-600 px-4 py-3 rounded-xl animate-fade-in-down font-medium text-sm sm:text-base">
                   {error}
                 </div>
               )}
 
-              {/* Hint */}
-              <div
-                className="bg-blue-50 border border-blue-200 text-blue-600 px-4 py-3 rounded-xl animate-fade-in animation-delay-500"
-                style={{ fontSize: "0.8rem" }}
-              >
-                <strong>Demo accounts:</strong><br />
-                admin / admin123<br />
-                doctor / doctor123<br />
-                nurse / nurse123
+              {/* Demo Accounts Hint */}
+              <div className="bg-blue-50 border-2 border-blue-200 text-blue-700 px-4 py-3 rounded-xl animate-fade-in animation-delay-500 text-xs sm:text-sm">
+                <p className="font-bold mb-1.5">Demo accounts:</p>
+                <div className="space-y-0.5 font-medium">
+                  <p>admin / admin123</p>
+                  <p>doctor / doctor123</p>
+                  <p>nurse / nurse123</p>
+                </div>
               </div>
 
-              {/* Submit */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md press-effect"
-                style={{ fontWeight: 700, fontSize: "1rem" }}
+                className="w-full py-3 sm:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md press-effect font-bold text-sm sm:text-base"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -175,11 +181,9 @@ export function LoginPage() {
               </button>
             </form>
 
-            <div
-              className="mt-7 pt-6 border-t border-gray-100 text-center text-gray-400"
-              style={{ fontSize: "0.78rem" }}
-            >
-              Health Watch Olongapo &copy; 2026 &mdash; All rights reserved
+            {/* Footer */}
+            <div className="mt-6 pt-5 border-t border-gray-100 text-center text-gray-400 font-medium text-xs sm:text-sm">
+              Health Watch Olongapo © 2026 — All rights reserved
             </div>
           </div>
         </div>
