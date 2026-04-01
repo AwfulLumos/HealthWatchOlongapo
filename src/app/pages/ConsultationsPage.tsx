@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Eye, Edit2, X, Activity, Thermometer, Heart } from "lucide-react";
 import { 
   mockConsultations, 
   consultationTypeColors, 
   consultationStatusColors 
 } from "../statics/consultations";
+import { ConsultationsSkeleton } from "../components/skeletons/ConsultationsSkeleton";
 
 const typeColor = consultationTypeColors;
 const statusColor = consultationStatusColors;
@@ -204,10 +205,24 @@ function ConsultationModal({ consultation, onClose, mode }: { consultation?: any
 export function ConsultationsPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add"; consultation?: any } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockConsultations.filter(c =>
     `${c.patient} ${c.id} ${c.diagnosis}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return <ConsultationsSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">

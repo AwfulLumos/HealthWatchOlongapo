@@ -5,6 +5,5 @@ export * from "./appointments";
 export * from "./prescriptions";
 export * from "./vitals";
 export * from "./staff";
-export * from "./stations";
 export * from "./dashboard";
 export * from "./reports";

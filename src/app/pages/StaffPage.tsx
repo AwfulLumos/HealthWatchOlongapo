@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Search, Plus, Eye, Edit2, X, UserCog } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, Eye, Edit2, X } from "lucide-react";
 import { mockStaff, roleColors } from "../statics/staff";
+import { StaffSkeleton } from "../components/skeletons/StaffSkeleton";
 
 const roleColor = roleColors;
 
@@ -90,10 +91,24 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
 export function StaffPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; staff?: any } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockStaff.filter(s =>
     `${s.firstName} ${s.lastName} ${s.id} ${s.role} ${s.station}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return <StaffSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">

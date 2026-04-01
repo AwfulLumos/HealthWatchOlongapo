@@ -5,6 +5,6 @@ export { consultationService } from './consultationService';
 export { prescriptionService } from './prescriptionService';
 export { vitalSignsService } from './vitalSignsService';
 export { staffService } from './staffService';
-export { barangayStationService } from './barangayStationService';
+
 export { authService } from './authService';
 export { dashboardService } from './dashboardService';

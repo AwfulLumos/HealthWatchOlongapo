@@ -7,7 +7,6 @@ import {
   Calendar,
   Pill,
   UserCog,
-  Building2,
   BarChart3,
   LogOut,
   Menu,
@@ -28,7 +27,6 @@ const navItems = [
   { to: "/prescriptions", label: "Prescriptions", icon: Pill },
   { to: "/vital-signs", label: "Vital Signs", icon: ClipboardList },
   { to: "/staff", label: "Staff", icon: UserCog },
-  { to: "/barangay-stations", label: "Barangay Stations", icon: Building2 },
   { to: "/reports", label: "Reports", icon: BarChart3 },
 ];
 

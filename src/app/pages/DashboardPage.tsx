@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import {
@@ -9,10 +10,25 @@ import {
   upcomingAppointments,
   patientStatusColors,
 } from "../statics/dashboard";
+import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 
 const statusColor = patientStatusColors;
 
 export function DashboardPage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
@@ -147,7 +163,7 @@ export function DashboardPage() {
             <a href="/patients" className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-xs sm:text-sm">View all</a>
           </div>
           <div className="space-y-2 sm:space-y-3">
-            {recentPatients.map((p, index) => (
+            {recentPatients.map((p) => (
               <div 
                 key={p.id} 
                 className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group"
