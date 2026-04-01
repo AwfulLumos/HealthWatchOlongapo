@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Eye, Edit2, Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { mockPatients, type Patient } from "../statics/patients";
+import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
 
 function PatientModal({ patient, onClose, mode }: { patient?: Patient | null; onClose: () => void; mode: "view" | "add" | "edit" }) {
   const isView = mode === "view";
@@ -126,10 +127,24 @@ function PatientModal({ patient, onClose, mode }: { patient?: Patient | null; on
 export function PatientsPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; patient?: Patient } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockPatients.filter(p =>
     `${p.firstName} ${p.lastName} ${p.id} ${p.barangay}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return <PatientsSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">

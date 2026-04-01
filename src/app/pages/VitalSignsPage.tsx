@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Activity, Heart, Thermometer, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { mockVitals, bpTrendData } from "../statics/vitals";
+import { VitalSignsSkeleton } from "../components/skeletons/VitalSignsSkeleton";
 
 function getBPStatus(systolic: number, diastolic: number) {
   if (systolic >= 140 || diastolic >= 90) return { label: "High", color: "text-red-600", bg: "bg-red-100" };
@@ -18,10 +19,24 @@ function getBSStatus(bs: number) {
 export function VitalSignsPage() {
   const [search, setSearch] = useState("");
   const [showTrend, setShowTrend] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockVitals.filter(v =>
     `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return <VitalSignsSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5 animate-fade-in">

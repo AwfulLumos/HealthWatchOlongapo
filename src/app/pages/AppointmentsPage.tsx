@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, X, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { mockAppointments, appointmentStatusColors } from "../statics/appointments";
+import { AppointmentsSkeleton, AppointmentsCalendarSkeleton } from "../components/skeletons/AppointmentsSkeleton";
 
 const statusColor = appointmentStatusColors;
 
@@ -70,10 +71,24 @@ export function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"list" | "calendar">("list");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; appt?: any } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockAppointments.filter(a =>
     `${a.patient} ${a.id} ${a.purpose}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return view === "list" ? <AppointmentsSkeleton /> : <AppointmentsCalendarSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">

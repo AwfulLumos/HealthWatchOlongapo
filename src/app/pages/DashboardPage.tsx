@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import {
@@ -9,10 +10,25 @@ import {
   upcomingAppointments,
   patientStatusColors,
 } from "../statics/dashboard";
+import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 
 const statusColor = patientStatusColors;
 
 export function DashboardPage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       {/* Header */}

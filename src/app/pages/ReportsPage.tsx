@@ -1,7 +1,8 @@
-import { Download, FileText, BarChart3, TrendingUp, Users, Stethoscope } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Download } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
   monthlyConsultations,
@@ -10,11 +11,26 @@ import {
   genderDistribution,
   reportCards,
 } from "../statics/reports";
+import { ReportsSkeleton } from "../components/skeletons/ReportsSkeleton";
 
 const stationData = stationPerformanceData;
 const genderData = genderDistribution;
 
 export function ReportsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <ReportsSkeleton />;
+  }
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">

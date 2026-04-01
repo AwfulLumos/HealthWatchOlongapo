@@ -4,6 +4,6 @@ export { useConsultations } from './useConsultations';
 export { usePrescriptions } from './usePrescriptions';
 export { useVitalSigns } from './useVitalSigns';
 export { useStaff } from './useStaff';
-
 export { useAuth } from './useAuth';
 export { useDashboard } from './useDashboard';
+export { useLoading, useAsyncData } from './useLoading';

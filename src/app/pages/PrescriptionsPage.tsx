@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Pill, Eye, X } from "lucide-react";
 import { mockPrescriptions } from "../statics/prescriptions";
+import { PrescriptionsSkeleton } from "../components/skeletons/PrescriptionsSkeleton";
 
 function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
   return (
@@ -53,6 +54,16 @@ function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
 export function PrescriptionsPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading - replace with actual API call when backend is ready
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = mockPrescriptions.filter(rx =>
     `${rx.patient} ${rx.medicine} ${rx.id} ${rx.consultId}`.toLowerCase().includes(search.toLowerCase())
@@ -64,6 +75,10 @@ export function PrescriptionsPage() {
     if (!grouped[rx.consultId]) grouped[rx.consultId] = [];
     grouped[rx.consultId].push(rx);
   });
+
+  if (isLoading) {
+    return <PrescriptionsSkeleton />;
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">
