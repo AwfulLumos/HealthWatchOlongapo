@@ -7,7 +7,7 @@ import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, loading: authLoading } = useAuth();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

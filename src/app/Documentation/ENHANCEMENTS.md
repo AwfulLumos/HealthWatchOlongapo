@@ -155,8 +155,7 @@ The system is fully responsive:
 5. **Prescriptions** - Medication tracking
 6. **Vital Signs** - Health monitoring
 7. **Staff** - Personnel management
-8. **Barangay Stations** - Location management
-9. **Reports** - Data analytics
+8. **Reports** - Data analytics
 
 ## 🎉 Ready to Go!
 

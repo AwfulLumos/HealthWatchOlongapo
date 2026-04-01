@@ -18,8 +18,6 @@ export { calculateBMI } from './VitalSigns';
 export type { Staff, StaffRole, AccountStatus, StaffFormData } from './Staff';
 export { getStaffFullName } from './Staff';
 
-// Barangay Station
-export type { BarangayStation, BarangayStationFormData } from './BarangayStation';
 
 // User & Auth
 export type { User, UserRole, LoginCredentials, AuthState } from './User';

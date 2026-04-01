@@ -1,4 +1,4 @@
-import { createBrowserRouter, redirect } from "react-router";
+import { createBrowserRouter } from "react-router";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -8,7 +8,6 @@ import { AppointmentsPage } from "./pages/AppointmentsPage";
 import { PrescriptionsPage } from "./pages/PrescriptionsPage";
 import { VitalSignsPage } from "./pages/VitalSignsPage";
 import { StaffPage } from "./pages/StaffPage";
-import { BarangayStationsPage } from "./pages/BarangayStationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 
 export const router = createBrowserRouter([
@@ -27,7 +26,6 @@ export const router = createBrowserRouter([
       { path: "prescriptions", Component: PrescriptionsPage },
       { path: "vital-signs", Component: VitalSignsPage },
       { path: "staff", Component: StaffPage },
-      { path: "barangay-stations", Component: BarangayStationsPage },
       { path: "reports", Component: ReportsPage },
     ],
   },

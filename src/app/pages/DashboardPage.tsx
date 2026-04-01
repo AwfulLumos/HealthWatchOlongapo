@@ -147,7 +147,7 @@ export function DashboardPage() {
             <a href="/patients" className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-xs sm:text-sm">View all</a>
           </div>
           <div className="space-y-2 sm:space-y-3">
-            {recentPatients.map((p, index) => (
+            {recentPatients.map((p) => (
               <div 
                 key={p.id} 
                 className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group"
