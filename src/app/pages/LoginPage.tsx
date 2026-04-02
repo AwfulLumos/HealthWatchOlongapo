@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, User, ChevronDown, AlertTriangle, Info } from "lucide-react";
 import { useAuth } from "../hooks";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { validateLoginForm } from "../utils/validation";
 import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, rateLimitInfo } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [showDemoHint, setShowDemoHint] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,16 +21,25 @@ export function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!username || !password) {
-      setError("Please enter your username and password.");
+
+    // Validate input
+    const validation = validateLoginForm({ username, password });
+    if (!validation.success) {
+      setError(validation.errors[0]?.message || "Invalid input");
       return;
     }
+
+    // Check if rate limited
+    if (rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil) {
+      setError(`Too many failed attempts. Try again at ${rateLimitInfo.lockedUntil.toLocaleTimeString()}`);
+      return;
+    }
+
     setLoading(true);
     setTimeout(() => {
-      const result = login({ username, password });
+      const result = login({ username: validation.data!.username, password: validation.data!.password });
       setLoading(false);
       if (result.success) {
-        // Capitalize the username for display
         const displayName = result.user?.username 
           ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
           : username;
@@ -148,25 +159,46 @@ export function LoginPage() {
 
               {/* Error */}
               {error && (
-                <div className="bg-red-50 border-2 border-red-200 text-red-600 px-4 py-3 rounded-xl animate-fade-in-down font-medium text-sm sm:text-base">
-                  {error}
+                <div className="bg-red-50 border-2 border-red-200 text-red-600 px-4 py-3 rounded-xl animate-fade-in-down font-medium text-sm sm:text-base flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              {/* Demo Accounts Hint */}
-              <div className="bg-blue-50 border-2 border-blue-200 text-blue-700 px-4 py-3 rounded-xl animate-fade-in animation-delay-500 text-xs sm:text-sm">
-                <p className="font-bold mb-1.5">Demo accounts:</p>
-                <div className="space-y-0.5 font-medium">
-                  <p>admin / admin123</p>
-                  <p>doctor / doctor123</p>
-                  <p>nurse / nurse123</p>
+              {/* Rate Limit Warning */}
+              {rateLimitInfo.remainingAttempts < 5 && rateLimitInfo.remainingAttempts > 0 && (
+                <div className="bg-amber-50 border-2 border-amber-200 text-amber-700 px-4 py-3 rounded-xl animate-fade-in font-medium text-xs sm:text-sm flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>Warning: {rateLimitInfo.remainingAttempts} login attempt{rateLimitInfo.remainingAttempts !== 1 ? 's' : ''} remaining before lockout.</span>
                 </div>
+              )}
+
+              {/* Demo Accounts Hint - Collapsible */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl animate-fade-in animation-delay-500 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowDemoHint(!showDemoHint)}
+                  className="w-full px-4 py-3 flex items-center justify-between text-blue-700 hover:bg-blue-100/50 transition-colors"
+                >
+                  <span className="flex items-center gap-2 font-bold text-xs sm:text-sm">
+                    <Info className="w-4 h-4" />
+                    Demo Accounts
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showDemoHint ? 'rotate-180' : ''}`} />
+                </button>
+                {showDemoHint && (
+                  <div className="px-4 pb-3 text-blue-700 text-xs sm:text-sm space-y-0.5 font-medium border-t border-blue-200 pt-2">
+                    <p>admin / admin123</p>
+                    <p>doctor / doctor123</p>
+                    <p>nurse / nurse123</p>
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (rateLimitInfo.lockedUntil !== null && new Date() < rateLimitInfo.lockedUntil)}
                 className="w-full py-3 sm:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md press-effect font-bold text-sm sm:text-base"
               >
                 {loading ? (
@@ -177,7 +209,7 @@ export function LoginPage() {
                     </svg>
                     Signing in...
                   </span>
-                ) : "Sign In"}
+                ) : rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil ? "Account Locked" : "Sign In"}
               </button>
             </form>
 

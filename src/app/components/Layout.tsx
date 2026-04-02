@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import {
   LayoutDashboard,
@@ -16,7 +16,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { LogoutScreen } from "./LogoutScreen";
-import { useAuth } from "../hooks";
+import { SessionTimeoutWarning } from "./SessionTimeoutWarning";
+import { useAuth, useSessionTimeout } from "../hooks";
 import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
 const navItems = [
@@ -35,17 +36,37 @@ export function Layout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showLogoutScreen, setShowLogoutScreen] = useState(false);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
+    setShowTimeoutWarning(false);
     setShowLogoutScreen(true);
-  };
+  }, []);
 
-  const handleLogoutComplete = () => {
+  const handleLogoutComplete = useCallback(() => {
     logout();
-    navigate("/");
-  };
+    navigate("/login");
+  }, [logout, navigate]);
+
+  // Session timeout hook - 30 minutes timeout, 5 minute warning
+  const { 
+    isWarning, 
+    remainingSeconds, 
+    extendSession 
+  } = useSessionTimeout({
+    timeoutMs: 30 * 60 * 1000,  // 30 minutes
+    warningMs: 5 * 60 * 1000,   // 5 minute warning
+    onTimeout: handleLogoutComplete,
+    onWarning: () => setShowTimeoutWarning(true),
+    enabled: true,
+  });
+
+  const handleExtendSession = useCallback(() => {
+    setShowTimeoutWarning(false);
+    extendSession();
+  }, [extendSession]);
 
   if (showLogoutScreen) {
     return (
@@ -59,6 +80,15 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Session Timeout Warning Modal */}
+      {(showTimeoutWarning || isWarning) && (
+        <SessionTimeoutWarning
+          remainingSeconds={remainingSeconds}
+          onExtend={handleExtendSession}
+          onLogout={handleLogout}
+        />
+      )}
+
       {/* Mobile Sidebar Overlay */}
       {mobileSidebarOpen && (
         <div 

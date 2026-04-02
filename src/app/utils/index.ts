@@ -90,3 +90,7 @@ export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
     return result;
   }, {} as Record<string, T[]>);
 }
+
+// Export security utilities
+export * from './security';
+export * from './validation';
