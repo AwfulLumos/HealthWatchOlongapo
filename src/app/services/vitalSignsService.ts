@@ -1,84 +1,87 @@
 import type { VitalSigns, VitalSignsFormData } from '../models';
-import { calculateBMI } from '../models';
-import { mockVitals as initialVitals } from '../statics';
-import { storage, generateId } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'vitals';
-
-function getVitals(): VitalSigns[] {
-  const stored = storage.get<VitalSigns[] | null>(STORAGE_KEY, null);
-  if (stored === null) {
-    storage.set(STORAGE_KEY, initialVitals);
-    return initialVitals;
-  }
-  return stored;
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
 }
 
 export const vitalSignsService = {
-  getAll(): VitalSigns[] {
-    return getVitals();
+  async getAll(params?: { patientId?: string; consultId?: string }): Promise<VitalSigns[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<VitalSigns[]>>('/api/v1/vital-signs', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch vital signs:', error);
+      return [];
+    }
   },
 
-  getById(id: string): VitalSigns | undefined {
-    return getVitals().find(v => v.id === id);
+  async getById(id: string): Promise<VitalSigns | undefined> {
+    try {
+      const response = await apiClient.get<ApiResponse<VitalSigns>>(`/api/v1/vital-signs/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch vital signs ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getByConsultationId(consultId: string): VitalSigns | undefined {
-    return getVitals().find(v => v.consultId === consultId);
+  async getByConsultationId(consultId: string): Promise<VitalSigns | undefined> {
+    const vitals = await this.getAll({ consultId });
+    return vitals[0];
   },
 
-  getByPatient(patientName: string): VitalSigns[] {
-    return getVitals().filter(v => 
-      v.patient.toLowerCase().includes(patientName.toLowerCase())
-    );
+  async getByPatient(patientId: string): Promise<VitalSigns[]> {
+    return this.getAll({ patientId });
   },
 
-  getLatestByPatient(patientName: string): VitalSigns | undefined {
-    const patientVitals = this.getByPatient(patientName);
-    return patientVitals.sort((a, b) => b.date.localeCompare(a.date))[0];
+  async getLatestByPatient(patientId: string): Promise<VitalSigns | undefined> {
+    try {
+      const response = await apiClient.get<ApiResponse<VitalSigns>>(`/api/v1/vital-signs/patient/${patientId}/latest`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch latest vital signs for patient ${patientId}:`, error);
+      return undefined;
+    }
   },
 
-  create(data: VitalSignsFormData): VitalSigns {
-    const vitals = getVitals();
-    const bmi = calculateBMI(data.weight, data.height);
-    const newVital: VitalSigns = {
-      ...data,
-      id: generateId('V', vitals.map(v => v.id)),
-      bmi,
-    };
-    storage.set(STORAGE_KEY, [...vitals, newVital]);
-    return newVital;
+  async create(data: VitalSignsFormData): Promise<VitalSigns | null> {
+    try {
+      const response = await apiClient.post<ApiResponse<VitalSigns>>('/api/v1/vital-signs', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create vital signs:', error);
+      return null;
+    }
   },
 
-  update(id: string, data: Partial<VitalSignsFormData>): VitalSigns | undefined {
-    const vitals = getVitals();
-    const index = vitals.findIndex(v => v.id === id);
-    if (index === -1) return undefined;
-
-    const current = vitals[index];
-    const weight = data.weight ?? current.weight;
-    const height = data.height ?? current.height;
-    const bmi = calculateBMI(weight, height);
-
-    const updated = { ...current, ...data, bmi };
-    vitals[index] = updated;
-    storage.set(STORAGE_KEY, vitals);
-    return updated;
+  async update(id: string, data: Partial<VitalSignsFormData>): Promise<VitalSigns | undefined> {
+    try {
+      const response = await apiClient.patch<ApiResponse<VitalSigns>>(`/api/v1/vital-signs/${id}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update vital signs ${id}:`, error);
+      return undefined;
+    }
   },
 
-  delete(id: string): boolean {
-    const vitals = getVitals();
-    const filtered = vitals.filter(v => v.id !== id);
-    if (filtered.length === vitals.length) return false;
-    storage.set(STORAGE_KEY, filtered);
-    return true;
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/api/v1/vital-signs/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete vital signs ${id}:`, error);
+      return false;
+    }
   },
 
-  getBPTrend(patientName: string): { date: string; systolic: number; diastolic: number }[] {
-    return this.getByPatient(patientName)
-      .sort((a, b) => a.date.localeCompare(b.date))
+  async getBPTrend(patientId: string): Promise<{ date: string; systolic: number; diastolic: number }[]> {
+    const vitals = await this.getByPatient(patientId);
+    return vitals
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(v => ({
-        date: v.date,
+        date: new Date(v.date).toISOString().split('T')[0],
         systolic: v.bpSystolic,
         diastolic: v.bpDiastolic,
       }));

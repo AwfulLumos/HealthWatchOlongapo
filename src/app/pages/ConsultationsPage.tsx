@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Eye, Edit2, X, Activity, Thermometer, Heart } from "lucide-react";
-import { 
-  mockConsultations, 
-  consultationTypeColors, 
-  consultationStatusColors 
-} from "../statics/consultations";
+import { consultationService } from "../services/consultationService";
 import { ConsultationsSkeleton } from "../components/skeletons/ConsultationsSkeleton";
 
-const typeColor = consultationTypeColors;
-const statusColor = consultationStatusColors;
+const typeColor = {
+  Regular: "text-blue-600 bg-blue-50 border-blue-200",
+  "Follow-up": "text-purple-600 bg-purple-50 border-purple-200",
+  Emergency: "text-red-600 bg-red-50 border-red-200"
+};
+const statusColor = {
+  Completed: "text-green-600 bg-green-50 border-green-200",
+  Pending: "text-orange-600 bg-orange-50 border-orange-200"
+};
 
 function ConsultationModal({ consultation, onClose, mode }: { consultation?: any; onClose: () => void; mode: "view" | "add" }) {
   const [tab, setTab] = useState<"info" | "vitals" | "prescription">("info");
@@ -206,17 +209,29 @@ export function ConsultationsPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add"; consultation?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [consultations, setConsultations] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchConsultations = async () => {
+      setIsLoading(true);
+      const data = await consultationService.getAll();
+      // Transform nested patient/staff objects to flat strings
+      const transformed = data.map((c: any) => ({
+        ...c,
+        patient: typeof c.patient === 'object' 
+          ? `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim() 
+          : c.patient || "Unknown",
+        staff: typeof c.staff === 'object' 
+          ? `${c.staff?.firstName || ''} ${c.staff?.lastName || ''}`.trim() 
+          : c.staff || "Unknown",
+      }));
+      setConsultations(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchConsultations();
   }, []);
 
-  const filtered = mockConsultations.filter(c =>
+  const filtered = consultations.filter(c =>
     `${c.patient} ${c.id} ${c.diagnosis}`.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -296,10 +311,10 @@ export function ConsultationsPage() {
                     <span className="text-gray-400 text-xs">{c.icdCode}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColor[c.type]}`}>{c.type}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColor[c.type as keyof typeof typeColor] || 'bg-gray-100 text-gray-600'}`}>{c.type}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[c.status]}`}>{c.status}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[c.status as keyof typeof statusColor] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
@@ -356,8 +371,8 @@ export function ConsultationsPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${typeColor[c.type]}`}>{c.type}</span>
-              <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${statusColor[c.status]}`}>{c.status}</span>
+              <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${typeColor[c.type as keyof typeof typeColor] || 'bg-gray-100 text-gray-600'}`}>{c.type}</span>
+              <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${statusColor[c.status as keyof typeof statusColor] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
             </div>
           </div>
         ))}

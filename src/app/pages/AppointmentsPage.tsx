@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, X, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { mockAppointments, appointmentStatusColors } from "../statics/appointments";
+import { appointmentService } from "../services/appointmentService";
 import { AppointmentsSkeleton, AppointmentsCalendarSkeleton } from "../components/skeletons/AppointmentsSkeleton";
 
-const statusColor = appointmentStatusColors;
+const statusColor = {
+  Confirmed: "text-green-600 bg-green-50 border-green-200",
+  Pending: "text-orange-600 bg-orange-50 border-orange-200",
+  Cancelled: "text-gray-600 bg-gray-50 border-gray-200"
+};
 
 function AppointmentModal({ appt, onClose, mode }: { appt?: any; onClose: () => void; mode: "view" | "add" | "edit" }) {
   return (
@@ -72,17 +76,30 @@ export function AppointmentsPage() {
   const [view, setView] = useState<"list" | "calendar">("list");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; appt?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [appointments, setAppointments] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchAppointments = async () => {
+      setIsLoading(true);
+      const data = await appointmentService.getAll();
+      // Transform nested patient/staff objects to flat strings
+      const transformed = data.map((a: any) => ({
+        ...a,
+        patient: typeof a.patient === 'object' 
+          ? `${a.patient?.firstName || ''} ${a.patient?.lastName || ''}`.trim() 
+          : a.patient || "Unknown",
+        patientId: a.patientId || a.patient?.id || "N/A",
+        staff: typeof a.staff === 'object' 
+          ? `${a.staff?.firstName || ''} ${a.staff?.lastName || ''}`.trim() 
+          : a.staff || "Unknown",
+      }));
+      setAppointments(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchAppointments();
   }, []);
 
-  const filtered = mockAppointments.filter(a =>
+  const filtered = appointments.filter(a =>
     `${a.patient} ${a.id} ${a.purpose}`.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -159,52 +176,65 @@ export function AppointmentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((a, i) => (
-                  <tr key={a.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
-                    <td className="px-4 py-3">
-                      <span className="text-blue-600 text-sm font-semibold">{a.id}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-gray-800 text-sm font-semibold">{a.patient}</p>
-                      <p className="text-gray-400 text-xs">{a.patientId}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 text-sm">{a.staff}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                        {a.scheduledDate}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 text-sm">{a.purpose}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[a.status]}`}>{a.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 max-w-[120px] text-xs">
-                      <span className="truncate block">{a.notes || "—"}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button onClick={() => setModal({ mode: "view", appt: a })} className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors">View</button>
-                        <button onClick={() => setModal({ mode: "edit", appt: a })} className="px-2 py-1 text-gray-500 hover:bg-gray-100 rounded text-xs transition-colors">Edit</button>
-                      </div>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-gray-400 text-sm">
+                      No appointments found. {appointments.length === 0 ? "Click 'Schedule Appointment' to add one." : "Try adjusting your search."}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((a, i) => (
+                    <tr key={a.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
+                      <td className="px-4 py-3">
+                        <span className="text-blue-600 text-sm font-semibold">{a.id}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-gray-800 text-sm font-semibold">{a.patient}</p>
+                        <p className="text-gray-400 text-xs">{a.patientId}</p>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">{a.staff}</td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                          {a.scheduledDate}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">{a.purpose}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[a.status as keyof typeof statusColor] || 'bg-gray-100 text-gray-600'}`}>{a.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 max-w-[120px] text-xs">
+                        <span className="truncate block">{a.notes || "—"}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button onClick={() => setModal({ mode: "view", appt: a })} className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors">View</button>
+                          <button onClick={() => setModal({ mode: "edit", appt: a })} className="px-2 py-1 text-gray-500 hover:bg-gray-100 rounded text-xs transition-colors">Edit</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-3">
-            {filtered.map((a) => (
-              <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <span className="text-blue-600 text-xs font-semibold">{a.id}</span>
-                    <p className="text-gray-800 text-sm font-semibold mt-0.5">{a.patient}</p>
+            {filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                No appointments found. {appointments.length === 0 ? "Click 'Schedule Appointment' to add one." : "Try adjusting your search."}
+              </div>
+            ) : (
+              filtered.map((a) => (
+                <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <span className="text-blue-600 text-xs font-semibold">{a.id}</span>
+                      <p className="text-gray-800 text-sm font-semibold mt-0.5">{a.patient}</p>
                     <p className="text-gray-400 text-xs">{a.patientId}</p>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${statusColor[a.status]}`}>{a.status}</span>
+                  <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${statusColor[a.status as keyof typeof statusColor] || statusColor.Pending}`}>{a.status}</span>
                 </div>
                 <div className="space-y-1.5 mb-3">
                   <div className="flex justify-between">
@@ -228,7 +258,8 @@ export function AppointmentsPage() {
                   <button onClick={() => setModal({ mode: "edit", appt: a })} className="flex-1 py-1.5 text-gray-500 hover:bg-gray-100 rounded text-xs transition-colors border border-gray-200">Edit</button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </>
       ) : (

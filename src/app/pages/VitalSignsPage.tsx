@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Activity, Heart, Thermometer, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { mockVitals, bpTrendData } from "../statics/vitals";
+import { vitalSignsService } from "../services/vitalSignsService";
 import { VitalSignsSkeleton } from "../components/skeletons/VitalSignsSkeleton";
 
 function getBPStatus(systolic: number, diastolic: number) {
@@ -20,17 +20,31 @@ export function VitalSignsPage() {
   const [search, setSearch] = useState("");
   const [showTrend, setShowTrend] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [vitals, setVitals] = useState<any[]>([]);
+  const [bpTrendData, setBpTrendData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchVitals = async () => {
+      setIsLoading(true);
+      const data = await vitalSignsService.getAll();
+      // Transform nested patient object to flat string
+      const transformed = data.map((v: any) => ({
+        ...v,
+        patient: typeof v.patient === 'object' 
+          ? `${v.patient?.firstName || ''} ${v.patient?.lastName || ''}`.trim() 
+          : v.patient || "Unknown",
+      }));
+      setVitals(transformed);
+      // You can fetch trend data for a specific patient if available
+      // const trend = await vitalSignsService.getTrend(patientId);
+      // setBpTrendData(trend);
+      setBpTrendData([]); // Empty for now
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchVitals();
   }, []);
 
-  const filtered = mockVitals.filter(v =>
+  const filtered = vitals.filter(v =>
     `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
 

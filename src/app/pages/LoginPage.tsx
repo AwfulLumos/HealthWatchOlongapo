@@ -18,7 +18,7 @@ export function LoginPage() {
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [loggedInUserName, setLoggedInUserName] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -36,19 +36,19 @@ export function LoginPage() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const result = login({ username: validation.data!.username, password: validation.data!.password });
-      setLoading(false);
-      if (result.success) {
-        const displayName = result.user?.username 
-          ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
-          : username;
-        setLoggedInUserName(displayName);
-        setShowLoadingScreen(true);
-      } else {
-        setError(result.error || "Invalid credentials.");
-      }
-    }, 500);
+    // Small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await login({ username: validation.data!.username, password: validation.data!.password });
+    setLoading(false);
+    if (result.success) {
+      const displayName = result.user?.username 
+        ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
+        : username;
+      setLoggedInUserName(displayName);
+      setShowLoadingScreen(true);
+    } else {
+      setError(result.error || "Invalid credentials.");
+    }
   };
 
   const handleLoadingComplete = () => {

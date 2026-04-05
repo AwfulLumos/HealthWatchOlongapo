@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Pill, Eye, X } from "lucide-react";
-import { mockPrescriptions } from "../statics/prescriptions";
+import { prescriptionService } from "../services/prescriptionService";
 import { PrescriptionsSkeleton } from "../components/skeletons/PrescriptionsSkeleton";
 
 function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
@@ -55,22 +55,35 @@ export function PrescriptionsPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchPrescriptions = async () => {
+      setIsLoading(true);
+      const data = await prescriptionService.getAll();
+      // Transform nested patient/doctor objects to flat strings
+      const transformed = data.map((rx: any) => ({
+        ...rx,
+        patient: typeof rx.patient === 'object' 
+          ? `${rx.patient?.firstName || ''} ${rx.patient?.lastName || ''}`.trim() 
+          : rx.patient || "Unknown",
+        doctor: typeof rx.doctor === 'object' 
+          ? `${rx.doctor?.firstName || ''} ${rx.doctor?.lastName || ''}`.trim() 
+          : rx.doctor || "Unknown",
+        consultId: rx.consultId || rx.consultation?.id || "N/A",
+      }));
+      setPrescriptions(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchPrescriptions();
   }, []);
 
-  const filtered = mockPrescriptions.filter(rx =>
+  const filtered = prescriptions.filter(rx =>
     `${rx.patient} ${rx.medicine} ${rx.id} ${rx.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
 
   // Group by consultation
-  const grouped: Record<string, typeof mockPrescriptions> = {};
+  const grouped: Record<string, any[]> = {};
   filtered.forEach(rx => {
     if (!grouped[rx.consultId]) grouped[rx.consultId] = [];
     grouped[rx.consultId].push(rx);

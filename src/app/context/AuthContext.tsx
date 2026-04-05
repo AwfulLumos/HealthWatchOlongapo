@@ -5,9 +5,9 @@ import { authService } from '../services';
 interface AuthContextType extends AuthState {
   loading: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => { success: boolean; error?: string };
-  logout: () => void;
-  changePassword: (oldPassword: string, newPassword: string) => { success: boolean; error?: string };
+  login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string; user?: User }>;
+  logout: () => Promise<void>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -17,11 +17,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = useCallback((credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     setLoading(true);
     setError(null);
     
-    const result = authService.login(credentials);
+    const result = await authService.login(credentials);
     
     if (result.success && result.user) {
       setAuthState({ user: result.user, isAuthenticated: true });
@@ -33,16 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
     setAuthState({ user: null, isAuthenticated: false });
   }, []);
 
-  const changePassword = useCallback((oldPassword: string, newPassword: string) => {
+  const changePassword = useCallback(async (oldPassword: string, newPassword: string) => {
     if (!authState.user) {
       return { success: false, error: 'Not logged in' };
     }
-    return authService.changePassword(authState.user.id, oldPassword, newPassword);
+    return await authService.changePassword(authState.user.id, oldPassword, newPassword);
   }, [authState.user]);
 
   return (

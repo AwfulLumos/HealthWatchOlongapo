@@ -1,29 +1,94 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { TrendingUp, AlertCircle, CheckCircle, Clock, Users, Stethoscope, Calendar, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import {
-  statsCards,
-  consultationsChartData,
-  monthlyPatientData,
-  diagnosisData,
-  recentPatients,
-  upcomingAppointments,
-  patientStatusColors,
-} from "../statics/dashboard";
+import { dashboardService } from "../services/dashboardService";
 import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 
-const statusColor = patientStatusColors;
+const statusColor: Record<string, string> = {
+  Active: "text-green-600 bg-green-50 border-green-200",
+  Inactive: "text-gray-600 bg-gray-50 border-gray-200",
+  Critical: "text-red-600 bg-red-50 border-red-200",
+};
+
+// Default stat card definitions with icons
+const defaultStatsCards = [
+  { key: "totalPatients", label: "Total Patients", icon: Users, light: "bg-blue-100", text: "text-blue-600", value: 0, change: "+0%" },
+  { key: "consultations", label: "Consultations", icon: Stethoscope, light: "bg-green-100", text: "text-green-600", value: 0, change: "+0%" },
+  { key: "appointments", label: "Appointments Today", icon: Calendar, light: "bg-purple-100", text: "text-purple-600", value: 0, change: "+0%" },
+  { key: "activeStaff", label: "Active Staff", icon: Activity, light: "bg-orange-100", text: "text-orange-600", value: 0, change: "+0%" },
+];
+
+// Default colors for diagnosis pie chart
+const diagnosisColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
 export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [statsCards, setStatsCards] = useState(defaultStatsCards);
+  const [consultationsChartData, setConsultationsChartData] = useState<any[]>([]);
+  const [diagnosisData, setDiagnosisData] = useState<any[]>([]);
+  const [monthlyPatientData, setMonthlyPatientData] = useState<any[]>([]);
+  const [recentPatients, setRecentPatients] = useState<any[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-
-    return () => clearTimeout(timer);
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        const [stats, consultationChart, diagnosisBreakdown, recentActivity, upcomingAppts] = await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getConsultationsChart(),
+          dashboardService.getDiagnosisBreakdown(),
+          dashboardService.getRecentActivity(),
+          dashboardService.getUpcomingAppointments(),
+        ]);
+        
+        // Map backend stats to card format with icons
+        if (stats && typeof stats === 'object') {
+          setStatsCards([
+            { ...defaultStatsCards[0], value: stats.totalPatients ?? 0 },
+            { ...defaultStatsCards[1], value: stats.monthlyConsultations ?? 0 },
+            { ...defaultStatsCards[2], value: stats.todayAppointments ?? 0 },
+            { ...defaultStatsCards[3], value: stats.totalStaff ?? 0 },
+          ]);
+        }
+        
+        setConsultationsChartData(consultationChart || []);
+        
+        // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
+        const coloredDiagnosis = (diagnosisBreakdown || []).map((item: any, index: number) => ({
+          name: item.diagnosis || item.name || "Unknown",
+          value: item.count || item.value || 0,
+          color: item.color || diagnosisColors[index % diagnosisColors.length],
+        }));
+        setDiagnosisData(coloredDiagnosis);
+        
+        // Transform recent patients: backend returns { barangay: { name } }, extract the string
+        const transformedPatients = (recentActivity || []).map((p: any) => ({
+          ...p,
+          name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || "Unknown",
+          barangay: typeof p.barangay === 'object' ? p.barangay?.name : p.barangay || "N/A",
+          date: p.date || (p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"),
+          status: p.status || "Active",
+        }));
+        setRecentPatients(transformedPatients);
+        
+        // Transform appointments: backend returns nested patient/staff objects
+        const transformedAppts = (upcomingAppts || []).map((appt: any) => ({
+          ...appt,
+          patientName: appt.patientName || (appt.patient ? `${appt.patient.firstName || ''} ${appt.patient.lastName || ''}`.trim() : "Unknown"),
+          staffName: appt.staffName || (appt.staff ? `${appt.staff.firstName || ''} ${appt.staff.lastName || ''}`.trim() : "Unknown"),
+          time: appt.time || (appt.scheduledDate ? new Date(appt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"),
+        }));
+        setUpcomingAppointments(transformedAppts);
+        
+        setMonthlyPatientData([]);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDashboardData();
   }, []);
 
   if (isLoading) {
@@ -163,25 +228,29 @@ export function DashboardPage() {
             <a href="/patients" className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-xs sm:text-sm">View all</a>
           </div>
           <div className="space-y-2 sm:space-y-3">
-            {recentPatients.map((p) => (
-              <div 
-                key={p.id} 
-                className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group"
-              >
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform text-[0.6rem] sm:text-xs font-bold">
-                    {p.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+            {recentPatients.length === 0 ? (
+              <p className="text-gray-400 text-center py-4 text-xs sm:text-sm">No recent patient activity</p>
+            ) : (
+              recentPatients.map((p) => (
+                <div 
+                  key={p.id} 
+                  className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform text-[0.6rem] sm:text-xs font-bold">
+                      {(p.name || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold">{p.name}</p>
+                      <p className="text-gray-400 text-[0.65rem] sm:text-xs">{p.barangay} &bull; {p.date}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold">{p.name}</p>
-                    <p className="text-gray-400 text-[0.65rem] sm:text-xs">{p.barangay} &bull; {p.date}</p>
-                  </div>
+                  <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${statusColor[p.status] || statusColor.Active} transition-transform group-hover:scale-105 text-[0.6rem] sm:text-xs font-medium`}>
+                    {p.status}
+                  </span>
                 </div>
-                <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${statusColor[p.status]} transition-transform group-hover:scale-105 text-[0.6rem] sm:text-xs font-medium`}>
-                  {p.status}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -192,19 +261,23 @@ export function DashboardPage() {
             <a href="/appointments" className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-xs sm:text-sm">View all</a>
           </div>
           <div className="space-y-2 sm:space-y-3">
-            {upcomingAppointments.map((appt, i) => (
-              <div key={i} className="flex items-start gap-2 sm:gap-3 py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group">
-                <div className="flex-shrink-0 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg text-center group-hover:from-blue-100 group-hover:to-blue-200 transition-all min-w-[56px] sm:min-w-[72px]">
-                  <p className="text-[0.65rem] sm:text-xs font-semibold">{appt.time}</p>
+            {upcomingAppointments.length === 0 ? (
+              <p className="text-gray-400 text-center py-4 text-xs sm:text-sm">No upcoming appointments</p>
+            ) : (
+              upcomingAppointments.map((appt, i) => (
+                <div key={appt.id || i} className="flex items-start gap-2 sm:gap-3 py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group">
+                  <div className="flex-shrink-0 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg text-center group-hover:from-blue-100 group-hover:to-blue-200 transition-all min-w-[56px] sm:min-w-[72px]">
+                    <p className="text-[0.65rem] sm:text-xs font-semibold">{appt.time}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold truncate">{appt.patientName}</p>
+                    <p className="text-gray-500 text-[0.65rem] sm:text-xs truncate">{appt.purpose}</p>
+                    <p className="text-blue-500 text-[0.65rem] sm:text-xs truncate">{appt.staffName}</p>
+                  </div>
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 flex-shrink-0 mt-0.5 group-hover:text-blue-400 transition-colors" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold truncate">{appt.patient}</p>
-                  <p className="text-gray-500 text-[0.65rem] sm:text-xs truncate">{appt.purpose}</p>
-                  <p className="text-blue-500 text-[0.65rem] sm:text-xs truncate">{appt.staff}</p>
-                </div>
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 flex-shrink-0 mt-0.5 group-hover:text-blue-400 transition-colors" />
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

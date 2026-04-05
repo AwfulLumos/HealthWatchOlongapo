@@ -1,31 +1,57 @@
 import { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, Users, Stethoscope, Activity, Building2, Heart, Pill } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import {
-  monthlyConsultations,
-  diagnosisBreakdown,
-  stationPerformanceData,
-  genderDistribution,
-  reportCards,
-} from "../statics/reports";
+import { dashboardService } from "../services/dashboardService";
 import { ReportsSkeleton } from "../components/skeletons/ReportsSkeleton";
-
-const stationData = stationPerformanceData;
-const genderData = genderDistribution;
 
 export function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [monthlyConsultations, setMonthlyConsultations] = useState<any[]>([]);
+  const [diagnosisBreakdown, setDiagnosisBreakdown] = useState<any[]>([]);
+  const [stationData, setStationData] = useState<any[]>([]);
+  const [genderData, setGenderData] = useState<any[]>([]);
+  const reportCards = [
+    { title: "Patient Demographics", desc: "Complete patient statistics", icon: Users, color: "bg-blue-100 text-blue-600" },
+    { title: "Consultation Summary", desc: "Monthly consultation breakdown", icon: Stethoscope, color: "bg-green-100 text-green-600" },
+    { title: "Diagnosis Report", desc: "Top diagnoses and trends", icon: Activity, color: "bg-purple-100 text-purple-600" },
+    { title: "Station Performance", desc: "Barangay health station metrics", icon: Building2, color: "bg-orange-100 text-orange-600" },
+    { title: "Vital Signs Summary", desc: "Population health indicators", icon: Heart, color: "bg-red-100 text-red-600" },
+    { title: "Prescription Analytics", desc: "Medication dispensing report", icon: Pill, color: "bg-teal-100 text-teal-600" },
+  ];
+
+// Default colors for charts
+const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6"];
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-
-    return () => clearTimeout(timer);
+    const fetchReportsData = async () => {
+      setIsLoading(true);
+      try {
+        const [consultationChart, diagnosisData] = await Promise.all([
+          dashboardService.getConsultationsChart(),
+          dashboardService.getDiagnosisBreakdown(),
+        ]);
+        
+        setMonthlyConsultations(consultationChart);
+        // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
+        const transformedDiagnosis = (diagnosisData || []).map((item: any, index: number) => ({
+          name: item.diagnosis || item.name || "Unknown",
+          value: item.count || item.value || 0,
+          color: item.color || chartColors[index % chartColors.length],
+        }));
+        setDiagnosisBreakdown(transformedDiagnosis);
+        // Set placeholder data for station and gender until backend provides endpoints
+        setStationData([]);
+        setGenderData([]);
+      } catch (error) {
+        console.error('Failed to fetch reports data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReportsData();
   }, []);
 
   if (isLoading) {

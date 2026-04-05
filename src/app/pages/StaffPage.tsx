@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Eye, Edit2, X } from "lucide-react";
-import { mockStaff, roleColors } from "../statics/staff";
+import { staffService } from "../services/staffService";
 import { StaffSkeleton } from "../components/skeletons/StaffSkeleton";
 
-const roleColor = roleColors;
+const roleColor = {
+  Doctor: "text-blue-600 bg-blue-50 border-blue-200",
+  Nurse: "text-purple-600 bg-purple-50 border-purple-200",
+  Midwife: "text-pink-600 bg-pink-50 border-pink-200",
+  BHW: "text-green-600 bg-green-50 border-green-200"
+};
 
 function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void; mode: "view" | "add" | "edit" }) {
   return (
@@ -26,7 +31,7 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
               </div>
               <div>
                 <p className="text-sm sm:text-lg font-bold text-gray-900">{staff.firstName} {staff.lastName}</p>
-                <span className={`px-2 py-0.5 rounded-full text-[0.65rem] sm:text-xs font-medium ${roleColor[staff.role] || "bg-gray-100 text-gray-600"}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[0.65rem] sm:text-xs font-medium ${roleColor[staff.role as keyof typeof roleColor] || "bg-gray-100 text-gray-600"}`}>
                   {staff.role}
                 </span>
               </div>
@@ -92,17 +97,25 @@ export function StaffPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; staff?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [staff, setStaff] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchStaff = async () => {
+      setIsLoading(true);
+      const data = await staffService.getAll();
+      // Transform nested station object to flat string
+      const transformed = data.map((s: any) => ({
+        ...s,
+        station: typeof s.station === 'object' ? s.station?.name : s.station || "N/A",
+        username: s.user?.username || s.username || "N/A",
+      }));
+      setStaff(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchStaff();
   }, []);
 
-  const filtered = mockStaff.filter(s =>
+  const filtered = staff.filter(s =>
     `${s.firstName} ${s.lastName} ${s.id} ${s.role} ${s.station}`.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -160,7 +173,7 @@ export function StaffPage() {
                 </div>
                 <div>
                   <p className="text-gray-900 text-sm sm:text-base font-bold">{s.firstName} {s.lastName}</p>
-                  <span className={`inline-block px-2 py-0.5 rounded-full mt-0.5 text-[0.6rem] sm:text-[0.7rem] font-medium ${roleColor[s.role] || "bg-gray-100 text-gray-600"}`}>
+                  <span className={`inline-block px-2 py-0.5 rounded-full mt-0.5 text-[0.6rem] sm:text-[0.7rem] font-medium ${roleColor[s.role as keyof typeof roleColor] || "bg-gray-100 text-gray-600"}`}>
                     {s.role}
                   </span>
                 </div>

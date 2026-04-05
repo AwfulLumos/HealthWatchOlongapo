@@ -23,7 +23,7 @@ export function useAuth() {
     lockedUntil: Date | null;
   }>({ remainingAttempts: MAX_LOGIN_ATTEMPTS, lockedUntil: null });
 
-  const login = useCallback((credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     setLoading(true);
     setError(null);
     
@@ -45,7 +45,7 @@ export function useAuth() {
       return { success: false, error: rateCheck.message };
     }
 
-    const result = authService.login(credentials);
+    const result = await authService.login(credentials);
     
     if (result.success && result.user) {
       // Reset rate limit on successful login
@@ -76,9 +76,9 @@ export function useAuth() {
     return result;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     // Clear auth state
-    authService.logout();
+    await authService.logout();
     setAuthState({ user: null, isAuthenticated: false });
     
     // Clear all application storage for security
@@ -103,11 +103,11 @@ export function useAuth() {
     }
   }, []);
 
-  const changePassword = useCallback((oldPassword: string, newPassword: string) => {
+  const changePassword = useCallback(async (oldPassword: string, newPassword: string) => {
     if (!authState.user) {
       return { success: false, error: 'Not logged in' };
     }
-    return authService.changePassword(authState.user.id, oldPassword, newPassword);
+    return await authService.changePassword(authState.user.id, oldPassword, newPassword);
   }, [authState.user]);
 
   const refreshAuthState = useCallback(() => {

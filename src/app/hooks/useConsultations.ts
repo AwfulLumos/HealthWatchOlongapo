@@ -1,38 +1,54 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Consultation, ConsultationFormData } from '../models';
 import { consultationService } from '../services';
 
 export function useConsultations() {
-  const [consultations, setConsultations] = useState<Consultation[]>(() => consultationService.getAll());
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [todayCount, setTodayCount] = useState(0);
+  const [diagnosisStats, setDiagnosisStats] = useState<{ name: string; count: number }[]>([]);
 
-  const refresh = useCallback(() => {
-    setConsultations(consultationService.getAll());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await consultationService.getAll();
+      setConsultations(data);
+      const count = await consultationService.getTodayCount();
+      setTodayCount(count);
+      const stats = await consultationService.getDiagnosisStats();
+      setDiagnosisStats(stats);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const getById = useCallback((id: string) => {
-    return consultationService.getById(id);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const getById = useCallback(async (id: string) => {
+    return await consultationService.getById(id);
   }, []);
 
-  const getByPatientId = useCallback((patientId: string) => {
-    return consultationService.getByPatientId(patientId);
+  const getByPatientId = useCallback(async (patientId: string) => {
+    return await consultationService.getByPatientId(patientId);
   }, []);
 
-  const getByDate = useCallback((date: string) => {
-    return consultationService.getByDate(date);
+  const getByDate = useCallback(async (date: string) => {
+    return await consultationService.getByDate(date);
   }, []);
 
-  const getByType = useCallback((type: Consultation['type']) => {
-    return consultationService.getByType(type);
+  const getByType = useCallback(async (type: Consultation['type']) => {
+    return await consultationService.getByType(type);
   }, []);
 
-  const create = useCallback((data: ConsultationFormData) => {
+  const create = useCallback(async (data: ConsultationFormData) => {
     setLoading(true);
     setError(null);
     try {
-      const newConsultation = consultationService.create(data);
-      refresh();
+      const newConsultation = await consultationService.create(data);
+      await refresh();
       return newConsultation;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create consultation');
@@ -42,12 +58,12 @@ export function useConsultations() {
     }
   }, [refresh]);
 
-  const update = useCallback((id: string, data: Partial<Consultation>) => {
+  const update = useCallback(async (id: string, data: Partial<Consultation>) => {
     setLoading(true);
     setError(null);
     try {
-      const updated = consultationService.update(id, data);
-      if (updated) refresh();
+      const updated = await consultationService.update(id, data);
+      if (updated) await refresh();
       return updated;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update consultation');
@@ -57,12 +73,12 @@ export function useConsultations() {
     }
   }, [refresh]);
 
-  const remove = useCallback((id: string) => {
+  const remove = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const success = consultationService.delete(id);
-      if (success) refresh();
+      const success = await consultationService.delete(id);
+      if (success) await refresh();
       return success;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete consultation');
@@ -72,9 +88,9 @@ export function useConsultations() {
     }
   }, [refresh]);
 
-  const complete = useCallback((id: string) => {
-    const result = consultationService.complete(id);
-    if (result) refresh();
+  const complete = useCallback(async (id: string) => {
+    const result = await consultationService.complete(id);
+    if (result) await refresh();
     return result;
   }, [refresh]);
 
@@ -91,7 +107,7 @@ export function useConsultations() {
     update,
     remove,
     complete,
-    todayCount: consultationService.getTodayCount(),
-    diagnosisStats: consultationService.getDiagnosisStats(),
+    todayCount,
+    diagnosisStats,
   };
 }

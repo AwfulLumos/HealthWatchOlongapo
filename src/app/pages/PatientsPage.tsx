@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Eye, Edit2, Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { mockPatients, type Patient } from "../statics/patients";
+import { patientService } from "../services/patientService";
+import type { Patient } from "../models";
 import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
 
 function PatientModal({ patient, onClose, mode }: { patient?: Patient | null; onClose: () => void; mode: "view" | "add" | "edit" }) {
@@ -128,17 +129,24 @@ export function PatientsPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; patient?: Patient } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [patients, setPatients] = useState<Patient[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchPatients = async () => {
+      setIsLoading(true);
+      const data = await patientService.getAll();
+      // Transform barangay from object to string if needed
+      const transformed = data.map((p: any) => ({
+        ...p,
+        barangay: typeof p.barangay === 'object' ? p.barangay?.name : p.barangay || "N/A",
+      }));
+      setPatients(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchPatients();
   }, []);
 
-  const filtered = mockPatients.filter(p =>
+  const filtered = patients.filter(p =>
     `${p.firstName} ${p.lastName} ${p.id} ${p.barangay}`.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -208,53 +216,66 @@ export function PatientsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => (
-                <tr 
-                  key={p.id} 
-                  className={`border-b border-gray-50 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
-                >
-                  <td className="px-4 py-3">
-                    <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold">{p.id}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 flex-shrink-0 group-hover:scale-110 transition-transform text-[0.55rem] sm:text-xs font-bold">
-                        {p.firstName[0]}{p.lastName[0]}
-                      </div>
-                      <span className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-medium">{p.firstName} {p.lastName}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{p.dob}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{p.gender}</td>
-                  <td className="px-4 py-3">
-                    <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded transition-transform group-hover:scale-105 inline-block text-[0.65rem] sm:text-xs font-medium">{p.bloodType}</span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{p.barangay}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{p.contact}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full transition-all group-hover:shadow-sm text-[0.6rem] sm:text-xs font-medium ${p.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setModal({ mode: "view", patient: p })} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setModal({ mode: "edit", patient: p })} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200 hover:scale-110">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-8 text-gray-400 text-sm">
+                    No patients found. {patients.length === 0 ? "Click 'Register Patient' to add a new patient." : "Try adjusting your search."}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((p, i) => (
+                  <tr 
+                    key={p.id} 
+                    className={`border-b border-gray-50 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold">{p.id}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 flex-shrink-0 group-hover:scale-110 transition-transform text-[0.55rem] sm:text-xs font-bold">
+                          {p.firstName?.[0]}{p.lastName?.[0]}
+                        </div>
+                        <span className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-medium">{p.firstName} {p.lastName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{p.dob}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{p.gender}</td>
+                    <td className="px-4 py-3">
+                      <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded transition-transform group-hover:scale-105 inline-block text-[0.65rem] sm:text-xs font-medium">{p.bloodType}</span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{p.barangay}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{p.contact}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full transition-all group-hover:shadow-sm text-[0.6rem] sm:text-xs font-medium ${p.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setModal({ mode: "view", patient: p })} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setModal({ mode: "edit", patient: p })} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200 hover:scale-110">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile Card View */}
         <div className="lg:hidden divide-y divide-gray-100">
-          {filtered.map((p) => (
+          {filtered.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              No patients found. {patients.length === 0 ? "Click 'Register Patient' to add a new patient." : "Try adjusting your search."}
+            </div>
+          ) : (
+            filtered.map((p) => (
             <div key={p.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-all">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -297,12 +318,13 @@ export function PatientsPage() {
                 </button>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-          <p className="text-gray-400 text-xs sm:text-sm">Showing {filtered.length} of {mockPatients.length} patients</p>
+          <p className="text-gray-400 text-xs sm:text-sm">Showing {filtered.length} of {patients.length} patients</p>
           <div className="flex items-center gap-1">
             <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105">
               <ChevronLeft className="w-4 h-4" />

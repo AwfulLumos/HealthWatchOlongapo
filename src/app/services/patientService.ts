@@ -1,77 +1,89 @@
 import type { Patient, PatientFormData } from '../models';
-import { mockPatients } from '../statics';
-import { storage, generateId } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'patients';
+interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  meta?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
-function getPatients(): Patient[] {
-  const stored = storage.get<Patient[] | null>(STORAGE_KEY, null);
-  if (stored === null) {
-    // Cast mock data to match our model types
-    const initialPatients = mockPatients as unknown as Patient[];
-    storage.set(STORAGE_KEY, initialPatients);
-    return initialPatients;
-  }
-  return stored;
+interface SingleResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
 }
 
 export const patientService = {
-  getAll(): Patient[] {
-    return getPatients();
+  async getAll(params?: { page?: number; limit?: number; search?: string; status?: string; barangayId?: string }): Promise<Patient[]> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Patient>>('/api/v1/patients', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch patients:', error);
+      return [];
+    }
   },
 
-  getById(id: string): Patient | undefined {
-    return getPatients().find(p => p.id === id);
+  async getById(id: string): Promise<Patient | undefined> {
+    try {
+      const response = await apiClient.get<SingleResponse<Patient>>(`/api/v1/patients/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch patient ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getByBarangay(barangay: string): Patient[] {
-    return getPatients().filter(p => p.barangay === barangay);
+  async getByBarangay(barangayId: string): Promise<Patient[]> {
+    return this.getAll({ barangayId });
   },
 
-  search(query: string): Patient[] {
-    const q = query.toLowerCase();
-    return getPatients().filter(p =>
-      p.firstName.toLowerCase().includes(q) ||
-      p.lastName.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q)
-    );
+  async search(query: string): Promise<Patient[]> {
+    return this.getAll({ search: query });
   },
 
-  create(data: PatientFormData): Patient {
-    const patients = getPatients();
-    const newPatient: Patient = {
-      ...data,
-      id: generateId('P', patients.map(p => p.id)),
-      registered: new Date().toISOString().split('T')[0],
-    };
-    storage.set(STORAGE_KEY, [...patients, newPatient]);
-    return newPatient;
+  async create(data: PatientFormData): Promise<Patient | null> {
+    try {
+      const response = await apiClient.post<SingleResponse<Patient>>('/api/v1/patients', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create patient:', error);
+      return null;
+    }
   },
 
-  update(id: string, data: Partial<Patient>): Patient | undefined {
-    const patients = getPatients();
-    const index = patients.findIndex(p => p.id === id);
-    if (index === -1) return undefined;
-
-    const updated = { ...patients[index], ...data };
-    patients[index] = updated;
-    storage.set(STORAGE_KEY, patients);
-    return updated;
+  async update(id: string, data: Partial<PatientFormData>): Promise<Patient | undefined> {
+    try {
+      const response = await apiClient.patch<SingleResponse<Patient>>(`/api/v1/patients/${id}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update patient ${id}:`, error);
+      return undefined;
+    }
   },
 
-  delete(id: string): boolean {
-    const patients = getPatients();
-    const filtered = patients.filter(p => p.id !== id);
-    if (filtered.length === patients.length) return false;
-    storage.set(STORAGE_KEY, filtered);
-    return true;
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/api/v1/patients/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete patient ${id}:`, error);
+      return false;
+    }
   },
 
-  getCount(): number {
-    return getPatients().length;
+  async getCount(): Promise<number> {
+    const patients = await this.getAll();
+    return patients.length;
   },
 
-  getActiveCount(): number {
-    return getPatients().filter(p => p.status === 'Active').length;
+  async getActiveCount(): Promise<number> {
+    const patients = await this.getAll({ status: 'Active' });
+    return patients.length;
   },
 };
