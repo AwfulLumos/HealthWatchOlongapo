@@ -1,0 +1,354 @@
+// Prisma Schema for HealthWatch Olongapo
+// Healthcare Management System Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  Admin
+  Doctor
+  Nurse
+  Midwife
+  BHW
+}
+
+enum AccountStatus {
+  Active
+  Inactive
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum CivilStatus {
+  Single
+  Married
+  Widowed
+  Divorced
+  Separated
+}
+
+enum PatientStatus {
+  Active
+  Inactive
+}
+
+enum AppointmentStatus {
+  Pending
+  Confirmed
+  Cancelled
+  Completed
+}
+
+enum ConsultationType {
+  Regular
+  FollowUp
+  Emergency
+}
+
+enum ConsultationStatus {
+  InProgress
+  Completed
+  Referred
+}
+
+enum MedicalConditionStatus {
+  Active
+  Resolved
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id            String        @id @default(cuid())
+  username      String        @unique
+  email         String?       @unique
+  password      String
+  role          UserRole
+  accountStatus AccountStatus @default(Active)
+  lastLogin     DateTime?
+  
+  // Relations
+  staff         Staff?        @relation(fields: [staffId], references: [id])
+  staffId       String?       @unique
+  
+  // Timestamps
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Refresh tokens for JWT
+  refreshTokens RefreshToken[]
+
+  @@index([username])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique @db.VarChar(500)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  address   String?
+  contact   String?
+  
+  // Relations
+  staff     Staff[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stations")
+}
+
+model Staff {
+  id            String        @id @default(cuid())
+  firstName     String
+  lastName      String
+  role          UserRole
+  licenseNumber String?
+  contact       String
+  email         String        @unique
+  accountStatus AccountStatus @default(Active)
+  
+  // Relations
+  station       Station?      @relation(fields: [stationId], references: [id])
+  stationId     String?
+  user          User?
+  
+  // Staff activities
+  appointments  Appointment[]
+  consultations Consultation[]
+  prescriptions Prescription[]
+  
+  // Timestamps
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([email])
+  @@index([stationId])
+  @@map("staff")
+}
+
+model Barangay {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  zipCode   String?
+  
+  // Relations
+  patients  Patient[]
+  
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("barangays")
+}
+
+model Patient {
+  id                     String        @id @default(cuid())
+  firstName              String
+  lastName               String
+  dob                    DateTime
+  gender                 Gender
+  bloodType              String?
+  civilStatus            CivilStatus?
+  contact                String
+  address                String
+  emergencyContact       String
+  emergencyContactNumber String
+  philhealth             String?
+  status                 PatientStatus @default(Active)
+  
+  // Relations
+  barangay               Barangay?     @relation(fields: [barangayId], references: [id])
+  barangayId             String?
+  
+  medicalHistory         MedicalCondition[]
+  appointments           Appointment[]
+  consultations          Consultation[]
+  prescriptions          Prescription[]
+  vitalSigns             VitalSigns[]
+  
+  // Timestamps
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([lastName, firstName])
+  @@index([barangayId])
+  @@index([philhealth])
+  @@map("patients")
+}
+
+model MedicalCondition {
+  id        String                  @id @default(cuid())
+  condition String
+  status    MedicalConditionStatus  @default(Active)
+  notes     String?                 @db.Text
+  diagnosedDate DateTime?
+  
+  // Relations
+  patient   Patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId String
+  
+  // Timestamps
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@index([patientId])
+  @@map("medical_conditions")
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  scheduledDate DateTime
+  purpose       String
+  status        AppointmentStatus @default(Pending)
+  notes         String?           @db.Text
+  
+  // Relations
+  patient       Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId     String
+  staff         Staff             @relation(fields: [staffId], references: [id])
+  staffId       String
+  
+  // Timestamps
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([staffId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+model Consultation {
+  id             String             @id @default(cuid())
+  date           DateTime           @default(now())
+  chiefComplaint String
+  symptoms       String             @db.Text
+  diagnosis      String
+  icdCode        String?
+  type           ConsultationType   @default(Regular)
+  status         ConsultationStatus @default(InProgress)
+  notes          String?            @db.Text
+  
+  // Relations
+  patient        Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId      String
+  staff          Staff              @relation(fields: [staffId], references: [id])
+  staffId        String
+  
+  prescriptions  Prescription[]
+  vitalSigns     VitalSigns[]
+  
+  // Timestamps
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([patientId])
+  @@index([staffId])
+  @@index([date])
+  @@index([diagnosis])
+  @@map("consultations")
+}
+
+model Prescription {
+  id           String       @id @default(cuid())
+  date         DateTime     @default(now())
+  medicine     String
+  dosage       String
+  frequency    String
+  duration     String
+  instructions String?      @db.Text
+  
+  // Relations
+  consultation Consultation @relation(fields: [consultId], references: [id], onDelete: Cascade)
+  consultId    String
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId    String
+  doctor       Staff        @relation(fields: [doctorId], references: [id])
+  doctorId     String
+  
+  // Timestamps
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([consultId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@map("prescriptions")
+}
+
+model VitalSigns {
+  id           String        @id @default(cuid())
+  date         DateTime      @default(now())
+  bpSystolic   Int
+  bpDiastolic  Int
+  pulseRate    Int
+  respRate     Int
+  temperature  Decimal       @db.Decimal(4, 1)
+  bloodSugar   Decimal?      @db.Decimal(5, 1)
+  weight       Decimal       @db.Decimal(5, 2)
+  height       Decimal       @db.Decimal(5, 2)
+  bmi          Decimal       @db.Decimal(4, 1)
+  
+  // Relations
+  consultation Consultation? @relation(fields: [consultId], references: [id], onDelete: SetNull)
+  consultId    String?
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId    String
+  
+  // Timestamps
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([patientId])
+  @@index([consultId])
+  @@index([date])
+  @@map("vital_signs")
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  userId     String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
