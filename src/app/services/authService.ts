@@ -111,6 +111,21 @@ export const authService = {
     }
   },
 
+  async register(data: { username: string; email: string; password: string; role: string; staffId?: string }): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await apiClient.post('/api/v1/auth/register', data);
+      
+      if (response.data.success) {
+        return { success: true, user: response.data.data };
+      }
+      
+      return { success: false, error: response.data.message || 'Registration failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      return { success: false, error: errorMessage };
+    }
+  },
+
   async getProfile(): Promise<User | null> {
     try {
       const response = await apiClient.get('/api/v1/auth/profile');

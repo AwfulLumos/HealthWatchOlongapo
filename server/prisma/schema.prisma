@@ -14,6 +14,10 @@ datasource db {
 
 enum UserRole {
   Admin
+  Employee
+}
+
+enum StaffRole {
   Doctor
   Nurse
   Midwife
@@ -127,7 +131,7 @@ model Staff {
   id            String        @id @default(cuid())
   firstName     String
   lastName      String
-  role          UserRole
+  role          StaffRole
   licenseNumber String?
   contact       String
   email         String        @unique

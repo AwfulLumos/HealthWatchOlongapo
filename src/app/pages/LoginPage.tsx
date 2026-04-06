@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, EyeOff, Lock, User, ChevronDown, AlertTriangle, Info } from "lucide-react";
+import { Eye, EyeOff, Lock, User, AlertTriangle } from "lucide-react";
 import { useAuth } from "../hooks";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { validateLoginForm } from "../utils/validation";
@@ -10,7 +10,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { login, rateLimitInfo } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [showDemoHint, setShowDemoHint] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -192,28 +191,6 @@ export function LoginPage() {
                   <span>Warning: {rateLimitInfo.remainingAttempts} login attempt{rateLimitInfo.remainingAttempts !== 1 ? 's' : ''} remaining before lockout.</span>
                 </div>
               )}
-
-              {/* Demo Accounts Hint - Collapsible */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl animate-fade-in animation-delay-500 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowDemoHint(!showDemoHint)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-blue-700 hover:bg-blue-100/50 transition-colors"
-                >
-                  <span className="flex items-center gap-2 font-bold text-xs sm:text-sm">
-                    <Info className="w-4 h-4" />
-                    Demo Accounts
-                  </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showDemoHint ? 'rotate-180' : ''}`} />
-                </button>
-                {showDemoHint && (
-                  <div className="px-4 pb-3 text-blue-700 text-xs sm:text-sm space-y-0.5 font-medium border-t border-blue-200 pt-2">
-                    <p>admin / admin123</p>
-                    <p>doctor / doctor123</p>
-                    <p>nurse / nurse123</p>
-                  </div>
-                )}
-              </div>
 
               {/* Submit Button */}
               <button

@@ -219,6 +219,114 @@ export function validateLoginForm(data: LoginFormInput): ValidationResult<LoginF
 }
 
 // ============================================
+// REGISTRATION FORM VALIDATION
+// ============================================
+
+export interface RegistrationFormInput {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: 'Admin' | 'Employee';
+  staffId?: string;
+}
+
+export function validateRegistrationForm(data: RegistrationFormInput): ValidationResult<Omit<RegistrationFormInput, 'confirmPassword'>> {
+  const errors: ValidationError[] = [];
+  
+  // Required fields
+  if (!data.username || data.username.trim() === '') {
+    errors.push({ field: 'username', message: 'Username is required' });
+  }
+  
+  if (!data.email || data.email.trim() === '') {
+    errors.push({ field: 'email', message: 'Email is required' });
+  }
+  
+  if (!data.password || data.password === '') {
+    errors.push({ field: 'password', message: 'Password is required' });
+  }
+  
+  if (!data.confirmPassword || data.confirmPassword === '') {
+    errors.push({ field: 'confirmPassword', message: 'Please confirm your password' });
+  }
+  
+  if (!data.role) {
+    errors.push({ field: 'role', message: 'Role is required' });
+  }
+  
+  // Username validation
+  if (data.username) {
+    const username = data.username.trim();
+    const minLengthError = minLength(username, 3, 'Username');
+    if (minLengthError) errors.push(minLengthError);
+    
+    const maxLengthError = maxLength(username, 50, 'Username');
+    if (maxLengthError) errors.push(maxLengthError);
+    
+    // Username format validation (alphanumeric, underscore, hyphen only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      errors.push({ field: 'username', message: 'Username can only contain letters, numbers, underscores, and hyphens' });
+    }
+  }
+  
+  // Email validation
+  if (data.email) {
+    const email = data.email.trim();
+    if (!isValidEmail(email)) {
+      errors.push({ field: 'email', message: 'Please enter a valid email address' });
+    }
+  }
+  
+  // Password validation
+  if (data.password) {
+    const minLengthError = minLength(data.password, 8, 'Password');
+    if (minLengthError) {
+      errors.push(minLengthError);
+    }
+    
+    const maxLengthError = maxLength(data.password, 100, 'Password');
+    if (maxLengthError) {
+      errors.push(maxLengthError);
+    }
+    
+    // Password strength validation
+    const passwordStrength = validatePasswordStrength(data.password);
+    if (passwordStrength.feedback.length > 0) {
+      passwordStrength.feedback.forEach((feedback: string) => {
+        errors.push({ field: 'password', message: feedback });
+      });
+    }
+  }
+  
+  // Confirm password validation
+  if (data.password && data.confirmPassword && data.password !== data.confirmPassword) {
+    errors.push({ field: 'confirmPassword', message: 'Passwords do not match' });
+  }
+  
+  // Role validation
+  if (data.role && !['Admin', 'Employee'].includes(data.role)) {
+    errors.push({ field: 'role', message: 'Invalid role selected' });
+  }
+  
+  if (errors.length > 0) {
+    return { success: false, errors };
+  }
+  
+  return {
+    success: true,
+    errors: [],
+    data: {
+      username: sanitizeInput(data.username).toLowerCase(),
+      email: sanitizeInput(data.email).toLowerCase(),
+      password: data.password, // Don't sanitize password
+      role: data.role,
+      staffId: data.staffId ? sanitizeInput(data.staffId) : undefined
+    }
+  };
+}
+
+// ============================================
 // PASSWORD CHANGE VALIDATION
 // ============================================
 
