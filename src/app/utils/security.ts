@@ -24,38 +24,6 @@ export function sanitizeInput(input: string): string {
     .trim();
 }
 
-/**
- * Sanitize input for display (basic HTML entity encoding)
- */
-export function sanitizeForDisplay(input: string): string {
-  if (!input || typeof input !== 'string') return '';
-  
-  const div = document.createElement('div');
-  div.textContent = input;
-  return div.innerHTML;
-}
-
-/**
- * Remove all HTML tags from input
- */
-export function stripHtmlTags(input: string): string {
-  if (!input || typeof input !== 'string') return '';
-  return input.replace(/<[^>]*>/g, '').trim();
-}
-
-/**
- * Validate and sanitize search input
- * Limits length and removes dangerous characters
- */
-export function sanitizeSearchInput(input: string, maxLength: number = 100): string {
-  if (!input || typeof input !== 'string') return '';
-  
-  return input
-    .substring(0, maxLength)
-    .replace(/[<>'"&;]/g, '')
-    .trim();
-}
-
 // ============================================
 // INPUT VALIDATION
 // ============================================

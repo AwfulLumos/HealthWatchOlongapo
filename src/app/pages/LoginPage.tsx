@@ -14,40 +14,58 @@ export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
+  const [loadingState, setLoadingState] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const [loggedInUserName, setLoggedInUserName] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted"); // Debug log
     setError("");
 
     // Validate input
     const validation = validateLoginForm({ username, password });
     if (!validation.success) {
       setError(validation.errors[0]?.message || "Invalid input");
+      console.log("Validation failed:", validation.errors); // Debug log
       return;
     }
 
     // Check if rate limited
     if (rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil) {
       setError(`Too many failed attempts. Try again at ${rateLimitInfo.lockedUntil.toLocaleTimeString()}`);
+      console.log("Rate limited"); // Debug log
       return;
     }
 
-    setLoading(true);
-    // Small delay for UX
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const result = await login({ username: validation.data!.username, password: validation.data!.password });
-    setLoading(false);
-    if (result.success) {
-      const displayName = result.user?.username 
-        ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
-        : username;
-      setLoggedInUserName(displayName);
-      setShowLoadingScreen(true);
-    } else {
-      setError(result.error || "Invalid credentials.");
+    try {
+      // Show authenticating loading screen
+      console.log("Setting loading state to authenticating"); // Debug log
+      setLoadingState('authenticating');
+      
+      // Call backend authentication
+      const result = await login({ username: validation.data!.username, password: validation.data!.password });
+      
+      console.log("Login result:", result); // Debug log
+      
+      if (result.success) {
+        const displayName = result.user?.username 
+          ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
+          : username;
+        setLoggedInUserName(displayName);
+        // Switch to success mode
+        console.log("Login successful, switching to success mode"); // Debug log
+        setLoadingState('success');
+      } else {
+        // Hide loading screen and show error
+        console.log("Login failed, showing error:", result.error); // Debug log
+        setLoadingState('idle');
+        setError(result.error || "Invalid credentials.");
+      }
+    } catch (err) {
+      // Handle unexpected errors
+      console.error("Unexpected login error:", err); // Debug log
+      setLoadingState('idle');
+      setError("An error occurred during login. Please try again.");
     }
   };
 
@@ -55,12 +73,14 @@ export function LoginPage() {
     navigate("/dashboard");
   };
 
-  if (showLoadingScreen) {
+  // Show loading screen when authenticating or successful
+  if (loadingState !== 'idle') {
     return (
       <LoadingScreen 
         userName={loggedInUserName} 
         onComplete={handleLoadingComplete}
         duration={2500}
+        mode={loadingState}
       />
     );
   }
@@ -198,18 +218,10 @@ export function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || (rateLimitInfo.lockedUntil !== null && new Date() < rateLimitInfo.lockedUntil)}
+                disabled={loadingState !== 'idle' || (rateLimitInfo.lockedUntil !== null && new Date() < rateLimitInfo.lockedUntil)}
                 className="w-full py-3 sm:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md press-effect font-bold text-sm sm:text-base"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil ? "Account Locked" : "Sign In"}
+                {rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil ? "Account Locked" : "Sign In"}
               </button>
             </form>
 
