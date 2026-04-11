@@ -7,21 +7,26 @@ const genders = ['Male', 'Female'] as const;
 const civilStatuses = ['Single', 'Married', 'Widowed', 'Divorced', 'Separated'] as const;
 const patientStatuses = ['Active', 'Inactive'] as const;
 
+const emptyStringToUndefined = (value: unknown) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
 export const createPatientSchema = z.object({
   body: z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     dob: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
     gender: z.enum(genders),
-    bloodType: z.enum(bloodTypes).optional(),
-    civilStatus: z.enum(civilStatuses).optional(),
+    bloodType: z.preprocess(emptyStringToUndefined, z.enum(bloodTypes).optional()),
+    civilStatus: z.preprocess(emptyStringToUndefined, z.enum(civilStatuses).optional()),
     contact: z.string().min(1, 'Contact number is required'),
     address: z.string().min(1, 'Address is required'),
     emergencyContact: z.string().min(1, 'Emergency contact is required'),
     emergencyContactNumber: z.string().min(1, 'Emergency contact number is required'),
-    philhealth: z.string().optional(),
-    barangayId: z.string().optional(),
-    status: z.enum(patientStatuses).optional(),
+    philhealth: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    barangayId: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    // Frontend currently uses a barangay *name* field; we resolve it server-side.
+    barangay: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    status: z.preprocess(emptyStringToUndefined, z.enum(patientStatuses).optional()),
   }),
 });
 
@@ -32,17 +37,21 @@ export const updatePatientSchema = z.object({
   body: z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
-    dob: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+    dob: z.preprocess(
+      emptyStringToUndefined,
+      z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional()
+    ),
     gender: z.enum(genders).optional(),
-    bloodType: z.enum(bloodTypes).optional(),
-    civilStatus: z.enum(civilStatuses).optional(),
+    bloodType: z.preprocess(emptyStringToUndefined, z.enum(bloodTypes).optional()),
+    civilStatus: z.preprocess(emptyStringToUndefined, z.enum(civilStatuses).optional()),
     contact: z.string().min(1).optional(),
     address: z.string().min(1).optional(),
     emergencyContact: z.string().min(1).optional(),
     emergencyContactNumber: z.string().min(1).optional(),
-    philhealth: z.string().optional(),
-    barangayId: z.string().optional(),
-    status: z.enum(patientStatuses).optional(),
+    philhealth: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    barangayId: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    barangay: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    status: z.preprocess(emptyStringToUndefined, z.enum(patientStatuses).optional()),
   }),
 });
 

@@ -20,7 +20,7 @@ export class VitalSignsController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const vitalSigns = await vitalSignsService.findById(req.params.id);
       sendSuccess(res, vitalSigns);
@@ -38,7 +38,7 @@ export class VitalSignsController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const vitalSigns = await vitalSignsService.update(req.params.id, req.body);
       sendSuccess(res, vitalSigns, 'Vital signs updated successfully');
@@ -47,7 +47,7 @@ export class VitalSignsController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await vitalSignsService.delete(req.params.id);
       sendNoContent(res);
@@ -56,7 +56,11 @@ export class VitalSignsController {
     }
   }
 
-  async getLatestByPatient(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getLatestByPatient(
+    req: Request<{ patientId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const vitalSigns = await vitalSignsService.getLatestByPatient(req.params.patientId);
       sendSuccess(res, vitalSigns);

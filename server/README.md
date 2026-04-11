@@ -97,6 +97,11 @@ Base URL: `http://localhost:3000/api/v1`
 | PATCH | /patients/:id | Update patient |
 | DELETE | /patients/:id | Delete patient |
 
+### Barangays
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /barangays | List all barangays |
+
 ### Staff
 | Method | Endpoint | Description |
 |--------|----------|-------------|

@@ -20,7 +20,7 @@ export class StaffController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const staff = await staffService.findById(req.params.id);
       sendSuccess(res, staff);
@@ -38,7 +38,7 @@ export class StaffController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const staff = await staffService.update(req.params.id, req.body);
       sendSuccess(res, staff, 'Staff updated successfully');
@@ -47,7 +47,7 @@ export class StaffController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await staffService.delete(req.params.id);
       sendNoContent(res);

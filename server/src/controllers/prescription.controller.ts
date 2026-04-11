@@ -19,7 +19,7 @@ export class PrescriptionController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const prescription = await prescriptionService.findById(req.params.id);
       sendSuccess(res, prescription);
@@ -37,7 +37,7 @@ export class PrescriptionController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const prescription = await prescriptionService.update(req.params.id, req.body);
       sendSuccess(res, prescription, 'Prescription updated successfully');
@@ -46,7 +46,7 @@ export class PrescriptionController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await prescriptionService.delete(req.params.id);
       sendNoContent(res);

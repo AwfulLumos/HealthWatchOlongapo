@@ -21,7 +21,7 @@ export class AppointmentController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const appointment = await appointmentService.findById(req.params.id);
       sendSuccess(res, appointment);
@@ -39,7 +39,7 @@ export class AppointmentController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const appointment = await appointmentService.update(req.params.id, req.body);
       sendSuccess(res, appointment, 'Appointment updated successfully');
@@ -48,7 +48,7 @@ export class AppointmentController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await appointmentService.delete(req.params.id);
       sendNoContent(res);

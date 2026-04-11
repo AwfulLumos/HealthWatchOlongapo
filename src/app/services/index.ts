@@ -1,5 +1,6 @@
 export { storage, generateId } from './storage';
 export { patientService } from './patientService';
+export { barangayService } from './barangayService';
 export { appointmentService } from './appointmentService';
 export { consultationService } from './consultationService';
 export { prescriptionService } from './prescriptionService';

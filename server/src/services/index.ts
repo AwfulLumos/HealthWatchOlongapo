@@ -6,3 +6,4 @@ export { consultationService } from './consultation.service.js';
 export { prescriptionService } from './prescription.service.js';
 export { vitalSignsService } from './vitalSigns.service.js';
 export { dashboardService } from './dashboard.service.js';
+export { barangayService } from './barangay.service.js';

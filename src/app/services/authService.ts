@@ -93,7 +93,7 @@ export const authService = {
     }
   },
 
-  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  async changePassword(_userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.post('/api/v1/auth/change-password', {
         oldPassword,
