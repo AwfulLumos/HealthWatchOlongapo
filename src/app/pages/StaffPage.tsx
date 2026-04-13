@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Search, Plus, Eye, Edit2, X, UserPlus } from "lucide-react";
 import { staffService } from "../services/staffService";
 import { StaffSkeleton } from "../components/skeletons/StaffSkeleton";
+import { formatEntityId } from "../utils";
 
 const roleColor = {
   Admin: "text-blue-600 bg-blue-50 border-blue-200",
@@ -37,7 +38,7 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
             </div>
             <div className="space-y-2 sm:space-y-3">
               {[
-                { label: "Staff ID", value: staff.id },
+                { label: "Staff ID", value: formatEntityId(staff.id, "STF") },
                 { label: "Barangay Station", value: staff.station },
                 { label: "License Number", value: staff.licenseNumber },
                 { label: "Contact Number", value: staff.contact },

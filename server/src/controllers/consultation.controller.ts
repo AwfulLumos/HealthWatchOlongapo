@@ -1,8 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { consultationService } from '../services/consultation.service.js';
 import { sendSuccess, sendCreated, sendNoContent, sendPaginated } from '../utils/response.js';
+import { AuthenticatedRequest } from '../types/index.js';
 
 export class ConsultationController {
+  async getCreationOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const options = await consultationService.getCreationOptions(authReq.user?.userId);
+      sendSuccess(res, options);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async findAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { page, limit, patientId, staffId, status, type, startDate, endDate } = req.query;
@@ -33,7 +44,8 @@ export class ConsultationController {
 
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const consultation = await consultationService.create(req.body);
+      const authReq = req as AuthenticatedRequest;
+      const consultation = await consultationService.create(req.body, authReq.user?.userId);
       sendCreated(res, consultation, 'Consultation created successfully');
     } catch (error) {
       next(error);

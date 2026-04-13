@@ -6,6 +6,30 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface ConsultationCreateInput {
+  patientId: string;
+  staffId?: string;
+  date?: string;
+  chiefComplaint: string;
+  symptoms: string;
+  diagnosis: string;
+  icdCode?: string;
+  type?: 'Regular' | 'FollowUp' | 'Emergency';
+  status?: 'InProgress' | 'Completed' | 'Referred';
+  notes?: string;
+}
+
+export interface ConsultationCreationOptions {
+  patients: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    status: string;
+  }>;
+  defaultStaffId?: string;
+}
+
 export const consultationService = {
   async getAll(params?: { patientId?: string; staffId?: string; status?: string; type?: string; startDate?: string; endDate?: string }): Promise<Consultation[]> {
     try {
@@ -52,6 +76,21 @@ export const consultationService = {
     } catch (error) {
       console.error('Failed to create consultation:', error);
       return null;
+    }
+  },
+
+  async createRecord(data: ConsultationCreateInput): Promise<Consultation> {
+    const response = await apiClient.post<ApiResponse<Consultation>>('/api/v1/consultations', data);
+    return response.data.data;
+  },
+
+  async getCreationOptions(): Promise<ConsultationCreationOptions> {
+    try {
+      const response = await apiClient.get<ApiResponse<ConsultationCreationOptions>>('/api/v1/consultations/creation-options');
+      return response.data.data || { patients: [] };
+    } catch (error) {
+      console.error('Failed to fetch consultation creation options:', error);
+      return { patients: [] };
     }
   },
 

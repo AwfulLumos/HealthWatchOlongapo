@@ -4,6 +4,7 @@ import { patientService } from "../services/patientService";
 import { barangayService } from "../services";
 import type { Patient } from "../models";
 import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
+import { formatEntityId } from "../utils";
 
 type PatientModalMode = "view" | "add" | "edit";
 
@@ -593,7 +594,7 @@ export function PatientsPage() {
                     className={`border-b border-gray-50 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
                   >
                     <td className="px-4 py-3">
-                      <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold">{p.id}</span>
+                      <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold" title={p.id}>{formatEntityId(p.id, "PAT")}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -648,7 +649,7 @@ export function PatientsPage() {
                   </div>
                   <div>
                     <p className="text-gray-800 font-semibold text-sm">{p.firstName} {p.lastName}</p>
-                    <p className="text-blue-600 text-xs font-medium">{p.id}</p>
+                    <p className="text-blue-600 text-xs font-medium" title={p.id}>{formatEntityId(p.id, "PAT")}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-[0.6rem] font-medium ${p.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>

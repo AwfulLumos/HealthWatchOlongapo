@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, X, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { appointmentService } from "../services/appointmentService";
 import { AppointmentsSkeleton, AppointmentsCalendarSkeleton } from "../components/skeletons/AppointmentsSkeleton";
+import { formatEntityId } from "../utils";
 
 const statusColor = {
   Confirmed: "text-green-600 bg-green-50 border-green-200",
@@ -186,11 +187,11 @@ export function AppointmentsPage() {
                   filtered.map((a, i) => (
                     <tr key={a.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
                       <td className="px-4 py-3">
-                        <span className="text-blue-600 text-sm font-semibold">{a.id}</span>
+                        <span className="text-blue-600 text-sm font-semibold" title={a.id}>{formatEntityId(a.id, "APT")}</span>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-gray-800 text-sm font-semibold">{a.patient}</p>
-                        <p className="text-gray-400 text-xs">{a.patientId}</p>
+                        <p className="text-gray-400 text-xs" title={a.patientId}>{formatEntityId(a.patientId, "PAT")}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-sm">{a.staff}</td>
                       <td className="px-4 py-3 text-gray-600 text-sm">
@@ -230,9 +231,9 @@ export function AppointmentsPage() {
                 <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <span className="text-blue-600 text-xs font-semibold">{a.id}</span>
+                      <span className="text-blue-600 text-xs font-semibold" title={a.id}>{formatEntityId(a.id, "APT")}</span>
                       <p className="text-gray-800 text-sm font-semibold mt-0.5">{a.patient}</p>
-                    <p className="text-gray-400 text-xs">{a.patientId}</p>
+                    <p className="text-gray-400 text-xs" title={a.patientId}>{formatEntityId(a.patientId, "PAT")}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-[0.65rem] font-medium ${statusColor[a.status as keyof typeof statusColor] || statusColor.Pending}`}>{a.status}</span>
                 </div>
