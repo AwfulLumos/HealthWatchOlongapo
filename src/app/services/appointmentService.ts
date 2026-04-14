@@ -6,14 +6,53 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface AppointmentCreationOptions {
+  patients: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    status: string;
+  }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
+  }>;
+  defaultStaffId?: string;
+}
+
+interface AppointmentQueryParams {
+  page?: number;
+  limit?: number;
+  patientId?: string;
+  staffId?: string;
+  status?: string | string[];
+  startDate?: string;
+  endDate?: string;
+}
+
 export const appointmentService = {
-  async getAll(params?: { patientId?: string; staffId?: string; status?: string; startDate?: string; endDate?: string }): Promise<Appointment[]> {
+  async getAll(params?: AppointmentQueryParams): Promise<Appointment[]> {
     try {
       const response = await apiClient.get<ApiResponse<Appointment[]>>('/api/v1/appointments', { params });
       return response.data.data || [];
     } catch (error) {
       console.error('Failed to fetch appointments:', error);
       return [];
+    }
+  },
+
+  async getCreationOptions(): Promise<AppointmentCreationOptions> {
+    try {
+      const response = await apiClient.get<ApiResponse<AppointmentCreationOptions>>('/api/v1/appointments/creation-options');
+      return response.data.data || { patients: [], staff: [] };
+    } catch (error) {
+      console.error('Failed to fetch appointment creation options:', error);
+      return { patients: [], staff: [] };
     }
   },
 
@@ -37,7 +76,7 @@ export const appointmentService = {
 
   async getUpcoming(): Promise<Appointment[]> {
     const today = new Date().toISOString().split('T')[0];
-    const appointments = await this.getAll({ startDate: today, status: 'Pending,Confirmed' });
+    const appointments = await this.getAll({ startDate: today, status: ['Pending', 'Confirmed'] });
     return appointments.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
   },
 
