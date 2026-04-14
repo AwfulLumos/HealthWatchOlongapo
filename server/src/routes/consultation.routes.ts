@@ -12,6 +12,11 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', consultationController.findAll.bind(consultationController));
+router.get(
+  '/creation-options',
+  authorize('Admin', 'Doctor', 'Nurse', 'Midwife'),
+  consultationController.getCreationOptions.bind(consultationController)
+);
 router.get('/:id', validate(consultationIdParamSchema), consultationController.findById.bind(consultationController));
 router.post(
   '/',

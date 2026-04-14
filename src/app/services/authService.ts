@@ -93,7 +93,7 @@ export const authService = {
     }
   },
 
-  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  async changePassword(_userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.post('/api/v1/auth/change-password', {
         oldPassword,
@@ -107,6 +107,21 @@ export const authService = {
       return { success: false, error: response.data.message || 'Password change failed' };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to change password';
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  async register(data: { username: string; email: string; password: string; role: string; staffId?: string }): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await apiClient.post('/api/v1/auth/register', data);
+      
+      if (response.data.success) {
+        return { success: true, user: response.data.data };
+      }
+      
+      return { success: false, error: response.data.message || 'Registration failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
       return { success: false, error: errorMessage };
     }
   },

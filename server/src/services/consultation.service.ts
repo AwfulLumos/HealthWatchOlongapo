@@ -1,9 +1,78 @@
 import { prisma } from '../config/database.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { CreateConsultationInput, UpdateConsultationInput } from '../validators/consultation.validator.js';
 import { Prisma } from '@prisma/client';
 
+interface ConsultationCreationOptions {
+  patients: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    status: string;
+  }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
+  }>;
+  defaultStaffId?: string;
+}
+
 export class ConsultationService {
+  async getCreationOptions(userId?: string): Promise<ConsultationCreationOptions> {
+    const [patients, staffMembers, user] = await Promise.all([
+      prisma.patient.findMany({
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+        },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      }),
+      prisma.staff.findMany({
+        where: { accountStatus: 'Active' },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          accountStatus: true,
+        },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      }),
+      userId
+        ? prisma.user.findUnique({
+            where: { id: userId },
+            select: { staffId: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      patients: patients.map((patient) => ({
+        id: patient.id,
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        fullName: `${patient.firstName} ${patient.lastName}`.trim(),
+        status: patient.status,
+      })),
+      staff: staffMembers.map((staff) => ({
+        id: staff.id,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        fullName: `${staff.firstName} ${staff.lastName}`.trim(),
+        role: staff.role,
+        accountStatus: staff.accountStatus,
+      })),
+      defaultStaffId: user?.staffId ?? undefined,
+    };
+  }
+
   async findAll(params: {
     page?: number;
     limit?: number;
@@ -66,10 +135,29 @@ export class ConsultationService {
     return consultation;
   }
 
-  async create(data: CreateConsultationInput) {
+  async create(data: CreateConsultationInput, userId?: string) {
+    let staffId = data.staffId;
+
+    if (!staffId && userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { staffId: true },
+      });
+      staffId = user?.staffId ?? undefined;
+    }
+
+    if (!staffId) {
+      throw new ValidationError('Validation failed', {
+        staffId: [
+          'No staff profile found for this user. Please assign a staff account or provide a staffId.',
+        ],
+      });
+    }
+
     return prisma.consultation.create({
       data: {
         ...data,
+        staffId,
         date: data.date ? new Date(data.date) : new Date(),
       },
       include: {

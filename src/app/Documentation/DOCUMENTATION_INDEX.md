@@ -55,6 +55,12 @@ Complete API documentation for all services:
 - Complete CRUD operations for all entities
 - Utility functions and helper methods
 
+### [Patient Registration (Frontend)](./PATIENT_REGISTRATION.md)
+How the Patients UI registers a patient:
+- Required fields and dropdown behavior
+- Saving/loading overlay behavior
+- How backend 422 validation errors are displayed
+
 ## 🏗️ System Architecture
 
 ### Core Components

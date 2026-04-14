@@ -1,9 +1,58 @@
 import { prisma } from '../config/database.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { CreatePatientInput, UpdatePatientInput } from '../validators/patient.validator.js';
 import { Prisma } from '@prisma/client';
 
 export class PatientService {
+  private normalizeBarangayName(value: string): string {
+    return value
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, '');
+  }
+
+  private async resolveBarangayId(input: {
+    barangayId?: string;
+    barangay?: string;
+  }): Promise<string | undefined> {
+    if (input.barangayId) {
+      return input.barangayId;
+    }
+
+    if (!input.barangay) {
+      return undefined;
+    }
+
+    const name = input.barangay.trim().replace(/\s+/g, ' ');
+    if (!name) {
+      return undefined;
+    }
+
+    const exact = await prisma.barangay.findUnique({ where: { name } });
+    if (exact) {
+      return exact.id;
+    }
+
+    const normalized = this.normalizeBarangayName(name);
+    const all = await prisma.barangay.findMany({ select: { id: true, name: true } });
+    const matches = all.filter((b) => this.normalizeBarangayName(b.name) === normalized);
+
+    if (matches.length === 1) {
+      return matches[0].id;
+    }
+
+    if (!matches.length) {
+      throw new ValidationError('Validation failed', {
+        barangay: ['Barangay not found'],
+      });
+    }
+
+    throw new ValidationError('Validation failed', {
+      barangay: ['Barangay name is ambiguous. Please select a barangay from the list.'],
+    });
+  }
+
   async findAll(params: {
     page?: number;
     limit?: number;
@@ -85,10 +134,18 @@ export class PatientService {
   }
 
   async create(data: CreatePatientInput) {
+    const resolvedBarangayId = await this.resolveBarangayId({
+      barangayId: data.barangayId,
+      barangay: data.barangay,
+    });
+
+    const { dob, barangayId: _barangayId, barangay: _barangay, ...rest } = data;
+
     return prisma.patient.create({
       data: {
-        ...data,
-        dob: new Date(data.dob),
+        ...rest,
+        dob: new Date(dob),
+        ...(resolvedBarangayId ? { barangayId: resolvedBarangayId } : {}),
       },
       include: { barangay: true },
     });
@@ -100,11 +157,19 @@ export class PatientService {
       throw new NotFoundError('Patient not found');
     }
 
+    const resolvedBarangayId = await this.resolveBarangayId({
+      barangayId: data.barangayId,
+      barangay: data.barangay,
+    });
+
+    const { dob, barangayId: _barangayId, barangay: _barangay, ...rest } = data;
+
     return prisma.patient.update({
       where: { id },
       data: {
-        ...data,
-        ...(data.dob && { dob: new Date(data.dob) }),
+        ...rest,
+        ...(dob && { dob: new Date(dob) }),
+        ...(resolvedBarangayId ? { barangayId: resolvedBarangayId } : {}),
       },
       include: { barangay: true },
     });

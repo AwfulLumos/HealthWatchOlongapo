@@ -69,6 +69,24 @@ export function truncate(str: string, length: number): string {
   return str.slice(0, length) + '...';
 }
 
+export function formatEntityId(
+  value: string | null | undefined,
+  prefix = 'ID',
+  length = 6
+): string {
+  const raw = String(value ?? '').trim();
+
+  if (!raw) return 'N/A';
+  if (raw === 'N/A' || raw === '-') return raw;
+
+  // Keep already-short IDs readable as-is.
+  if (raw.length <= 10) return raw;
+
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const suffix = (compact || raw).slice(-length).toUpperCase();
+  return `${prefix}-${suffix}`;
+}
+
 export function debounce<T extends (...args: unknown[]) => void>(
   fn: T,
   delay: number

@@ -8,7 +8,7 @@ const consultationStatuses = ['InProgress', 'Completed', 'Referred'] as const;
 export const createConsultationSchema = z.object({
   body: z.object({
     patientId: z.string().min(1, 'Patient ID is required'),
-    staffId: z.string().min(1, 'Staff ID is required'),
+    staffId: z.string().min(1, 'Staff ID is required').optional(),
     date: z.string().datetime().optional(),
     chiefComplaint: z.string().min(1, 'Chief complaint is required'),
     symptoms: z.string().min(1, 'Symptoms are required'),

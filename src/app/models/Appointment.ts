@@ -5,11 +5,18 @@ export interface Appointment {
   patient: string;
   patientId: string;
   staff: string;
-  staffId?: string;
+  staffId: string;
   scheduledDate: string;
   purpose: string;
   status: AppointmentStatus;
   notes?: string;
 }
 
-export type AppointmentFormData = Omit<Appointment, 'id'>;
+export interface AppointmentFormData {
+  patientId: string;
+  staffId: string;
+  scheduledDate: string;
+  purpose: string;
+  status: AppointmentStatus;
+  notes?: string;
+}

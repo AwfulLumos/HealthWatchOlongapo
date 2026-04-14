@@ -47,23 +47,23 @@ export const patientService = {
     return this.getAll({ search: query });
   },
 
-  async create(data: PatientFormData): Promise<Patient | null> {
+  async create(data: PatientFormData): Promise<Patient> {
     try {
       const response = await apiClient.post<SingleResponse<Patient>>('/api/v1/patients', data);
       return response.data.data;
     } catch (error) {
       console.error('Failed to create patient:', error);
-      return null;
+      throw error;
     }
   },
 
-  async update(id: string, data: Partial<PatientFormData>): Promise<Patient | undefined> {
+  async update(id: string, data: Partial<PatientFormData>): Promise<Patient> {
     try {
       const response = await apiClient.patch<SingleResponse<Patient>>(`/api/v1/patients/${id}`, data);
       return response.data.data;
     } catch (error) {
       console.error(`Failed to update patient ${id}:`, error);
-      return undefined;
+      throw error;
     }
   },
 

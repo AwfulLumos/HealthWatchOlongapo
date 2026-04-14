@@ -1,19 +1,32 @@
 import { Request, Response, NextFunction } from 'express';
 import { appointmentService } from '../services/appointment.service.js';
 import { sendSuccess, sendCreated, sendNoContent, sendPaginated } from '../utils/response.js';
+import { AuthenticatedRequest } from '../types/index.js';
+import { AppointmentListQueryInput } from '../validators/appointment.validator.js';
 
 export class AppointmentController {
+  async getCreationOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const options = await appointmentService.getCreationOptions(authReq.user?.userId);
+      sendSuccess(res, options);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async findAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page, limit, patientId, staffId, status, startDate, endDate } = req.query;
+      const { page, limit, patientId, staffId, status, startDate, endDate } =
+        req.query as AppointmentListQueryInput;
       const result = await appointmentService.findAll({
-        page: page ? parseInt(page as string) : undefined,
-        limit: limit ? parseInt(limit as string) : undefined,
-        patientId: patientId as string,
-        staffId: staffId as string,
-        status: status as string,
-        startDate: startDate as string,
-        endDate: endDate as string,
+        page,
+        limit,
+        patientId,
+        staffId,
+        status,
+        startDate,
+        endDate,
       });
       sendPaginated(res, result.appointments, result.total, result.page, result.limit);
     } catch (error) {
@@ -21,7 +34,7 @@ export class AppointmentController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const appointment = await appointmentService.findById(req.params.id);
       sendSuccess(res, appointment);
@@ -39,7 +52,7 @@ export class AppointmentController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const appointment = await appointmentService.update(req.params.id, req.body);
       sendSuccess(res, appointment, 'Appointment updated successfully');
@@ -48,7 +61,7 @@ export class AppointmentController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await appointmentService.delete(req.params.id);
       sendNoContent(res);

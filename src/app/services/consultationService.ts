@@ -6,6 +6,48 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface ConsultationCreateInput {
+  patientId: string;
+  staffId?: string;
+  date?: string;
+  chiefComplaint: string;
+  symptoms: string;
+  diagnosis: string;
+  icdCode?: string;
+  type?: 'Regular' | 'FollowUp' | 'Emergency';
+  status?: 'InProgress' | 'Completed' | 'Referred';
+  notes?: string;
+}
+
+export interface ConsultationUpdateInput {
+  chiefComplaint?: string;
+  symptoms?: string;
+  diagnosis?: string;
+  icdCode?: string;
+  type?: 'Regular' | 'FollowUp' | 'Emergency';
+  status?: 'InProgress' | 'Completed' | 'Referred';
+  notes?: string;
+}
+
+export interface ConsultationCreationOptions {
+  patients: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    status: string;
+  }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
+  }>;
+  defaultStaffId?: string;
+}
+
 export const consultationService = {
   async getAll(params?: { patientId?: string; staffId?: string; status?: string; type?: string; startDate?: string; endDate?: string }): Promise<Consultation[]> {
     try {
@@ -55,6 +97,21 @@ export const consultationService = {
     }
   },
 
+  async createRecord(data: ConsultationCreateInput): Promise<Consultation> {
+    const response = await apiClient.post<ApiResponse<Consultation>>('/api/v1/consultations', data);
+    return response.data.data;
+  },
+
+  async getCreationOptions(): Promise<ConsultationCreationOptions> {
+    try {
+      const response = await apiClient.get<ApiResponse<ConsultationCreationOptions>>('/api/v1/consultations/creation-options');
+      return response.data.data || { patients: [], staff: [] };
+    } catch (error) {
+      console.error('Failed to fetch consultation creation options:', error);
+      return { patients: [], staff: [] };
+    }
+  },
+
   async update(id: string, data: Partial<ConsultationFormData>): Promise<Consultation | undefined> {
     try {
       const response = await apiClient.patch<ApiResponse<Consultation>>(`/api/v1/consultations/${id}`, data);
@@ -63,6 +120,11 @@ export const consultationService = {
       console.error(`Failed to update consultation ${id}:`, error);
       return undefined;
     }
+  },
+
+  async updateRecord(id: string, data: ConsultationUpdateInput): Promise<Consultation> {
+    const response = await apiClient.patch<ApiResponse<Consultation>>(`/api/v1/consultations/${id}`, data);
+    return response.data.data;
   },
 
   async delete(id: string): Promise<boolean> {

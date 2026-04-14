@@ -103,7 +103,7 @@ export function Layout() {
           fixed lg:relative inset-y-0 left-0 z-50
           ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${sidebarOpen ? "lg:w-56" : "lg:w-16"}
-          w-64 lg:w-auto
+          w-[85vw] max-w-[16rem] lg:w-auto
           bg-gradient-to-b from-blue-900 via-blue-900 to-blue-950 
           flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 shadow-xl
         `}
@@ -199,7 +199,7 @@ export function Layout() {
               <input
                 type="text"
                 placeholder="Search patients, records..."
-                className="w-48 lg:w-72 px-3 sm:px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 text-sm"
+                className="w-40 sm:w-48 md:w-56 lg:w-72 px-3 sm:px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 text-sm"
               />
             </div>
           </div>

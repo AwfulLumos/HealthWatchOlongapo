@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
+import { RegistrationPage } from "./pages/RegistrationPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { ConsultationsPage } from "./pages/ConsultationsPage";
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: "prescriptions", element: <PrescriptionsPage /> },
       { path: "vital-signs", element: <VitalSignsPage /> },
       { path: "staff", element: <StaffPage /> },
+      { path: "register", element: <RegistrationPage /> },
       { path: "reports", element: <ReportsPage /> },
     ],
   },

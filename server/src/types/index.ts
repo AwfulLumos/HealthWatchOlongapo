@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserRole } from '@prisma/client';
+import { StaffRole, UserRole } from '@prisma/client';
 
 // Extend Express Request type
 declare global {
@@ -8,6 +8,7 @@ declare global {
       user?: {
         userId: string;
         role: UserRole;
+        staffRole?: StaffRole;
       };
     }
   }
@@ -17,6 +18,7 @@ export interface AuthenticatedRequest extends Request {
   user: {
     userId: string;
     role: UserRole;
+    staffRole?: StaffRole;
   };
 }
 

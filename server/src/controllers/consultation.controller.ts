@@ -1,8 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { consultationService } from '../services/consultation.service.js';
 import { sendSuccess, sendCreated, sendNoContent, sendPaginated } from '../utils/response.js';
+import { AuthenticatedRequest } from '../types/index.js';
 
 export class ConsultationController {
+  async getCreationOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const options = await consultationService.getCreationOptions(authReq.user?.userId);
+      sendSuccess(res, options);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async findAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { page, limit, patientId, staffId, status, type, startDate, endDate } = req.query;
@@ -22,7 +33,7 @@ export class ConsultationController {
     }
   }
 
-  async findById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async findById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const consultation = await consultationService.findById(req.params.id);
       sendSuccess(res, consultation);
@@ -33,14 +44,15 @@ export class ConsultationController {
 
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const consultation = await consultationService.create(req.body);
+      const authReq = req as AuthenticatedRequest;
+      const consultation = await consultationService.create(req.body, authReq.user?.userId);
       sendCreated(res, consultation, 'Consultation created successfully');
     } catch (error) {
       next(error);
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       const consultation = await consultationService.update(req.params.id, req.body);
       sendSuccess(res, consultation, 'Consultation updated successfully');
@@ -49,7 +61,7 @@ export class ConsultationController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
     try {
       await consultationService.delete(req.params.id);
       sendNoContent(res);

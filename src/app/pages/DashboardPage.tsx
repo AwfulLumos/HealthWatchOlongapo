@@ -113,7 +113,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {statsCards.map((card, index) => (
           <div 
             key={card.label} 
@@ -136,7 +136,7 @@ export function DashboardPage() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3 md:gap-4">
         {/* Weekly Consultations Bar */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-3 sm:p-4 lg:p-5 shadow-card hover:shadow-card-hover transition-all duration-300 animate-fade-in-up animation-delay-300">
           <h3 className="text-gray-800 mb-3 sm:mb-4 font-semibold text-sm sm:text-base">
@@ -220,7 +220,7 @@ export function DashboardPage() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Recent Patients */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 lg:p-5 shadow-card hover:shadow-card-hover transition-all duration-300">
           <div className="flex items-center justify-between mb-3 sm:mb-4">

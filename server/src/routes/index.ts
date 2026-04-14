@@ -8,6 +8,7 @@ import consultationRoutes from './consultation.routes.js';
 import prescriptionRoutes from './prescription.routes.js';
 import vitalSignsRoutes from './vitalSigns.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import barangayRoutes from './barangay.routes.js';
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use('/consultations', consultationRoutes);
 router.use('/prescriptions', prescriptionRoutes);
 router.use('/vital-signs', vitalSignsRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/barangays', barangayRoutes);
 
 export default router;

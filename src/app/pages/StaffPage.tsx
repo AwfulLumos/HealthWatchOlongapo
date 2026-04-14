@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit2, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Search, Plus, Eye, Edit2, X, UserPlus } from "lucide-react";
 import { staffService } from "../services/staffService";
 import { StaffSkeleton } from "../components/skeletons/StaffSkeleton";
+import { formatEntityId } from "../utils";
 
 const roleColor = {
-  Doctor: "text-blue-600 bg-blue-50 border-blue-200",
-  Nurse: "text-purple-600 bg-purple-50 border-purple-200",
-  Midwife: "text-pink-600 bg-pink-50 border-pink-200",
-  BHW: "text-green-600 bg-green-50 border-green-200"
+  Admin: "text-blue-600 bg-blue-50 border-blue-200",
+  Employee: "text-green-600 bg-green-50 border-green-200"
 };
 
 function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void; mode: "view" | "add" | "edit" }) {
@@ -38,7 +38,7 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
             </div>
             <div className="space-y-2 sm:space-y-3">
               {[
-                { label: "Staff ID", value: staff.id },
+                { label: "Staff ID", value: formatEntityId(staff.id, "STF") },
                 { label: "Barangay Station", value: staff.station },
                 { label: "License Number", value: staff.licenseNumber },
                 { label: "Contact Number", value: staff.contact },
@@ -94,6 +94,7 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
 }
 
 export function StaffPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; staff?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,12 +131,20 @@ export function StaffPage() {
           <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Staff Management</h1>
           <p className="text-xs sm:text-sm text-gray-500">Manage health center staff and accounts</p>
         </div>
-        <button
-          onClick={() => setModal({ mode: "add" })}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
-        >
-          <Plus className="w-4 h-4" /> Add Staff
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => navigate('/register')}
+            className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+          >
+            <UserPlus className="w-4 h-4" /> Register User
+          </button>
+          <button
+            onClick={() => setModal({ mode: "add" })}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+          >
+            <Plus className="w-4 h-4" /> Add Staff
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -159,7 +168,7 @@ export function StaffPage() {
       </div>
 
       {/* Staff cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filtered.map((s, index) => (
           <div 
             key={s.id} 

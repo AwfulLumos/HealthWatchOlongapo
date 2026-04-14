@@ -56,7 +56,7 @@ export function usePatients() {
     setError(null);
     try {
       const updated = await patientService.update(id, data);
-      if (updated) await refresh();
+      await refresh();
       return updated;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update patient');

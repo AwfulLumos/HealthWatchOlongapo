@@ -137,7 +137,7 @@ export function LoadingScreen({
         </div>
 
         {/* Progress Bar - Wider */}
-        <div className="w-56 sm:w-72 h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="w-full max-w-[18rem] sm:max-w-[20rem] h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
           <div
             className="h-full bg-gradient-to-r from-blue-400 via-teal-400 to-green-400 rounded-full transition-all duration-100 ease-out"
             style={{ width: `${progress}%` }}
