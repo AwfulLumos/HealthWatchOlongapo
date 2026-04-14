@@ -11,18 +11,37 @@ interface ConsultationCreationOptions {
     fullName: string;
     status: string;
   }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
+  }>;
   defaultStaffId?: string;
 }
 
 export class ConsultationService {
   async getCreationOptions(userId?: string): Promise<ConsultationCreationOptions> {
-    const [patients, user] = await Promise.all([
+    const [patients, staffMembers, user] = await Promise.all([
       prisma.patient.findMany({
         select: {
           id: true,
           firstName: true,
           lastName: true,
           status: true,
+        },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      }),
+      prisma.staff.findMany({
+        where: { accountStatus: 'Active' },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          accountStatus: true,
         },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       }),
@@ -41,6 +60,14 @@ export class ConsultationService {
         lastName: patient.lastName,
         fullName: `${patient.firstName} ${patient.lastName}`.trim(),
         status: patient.status,
+      })),
+      staff: staffMembers.map((staff) => ({
+        id: staff.id,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        fullName: `${staff.firstName} ${staff.lastName}`.trim(),
+        role: staff.role,
+        accountStatus: staff.accountStatus,
       })),
       defaultStaffId: user?.staffId ?? undefined,
     };

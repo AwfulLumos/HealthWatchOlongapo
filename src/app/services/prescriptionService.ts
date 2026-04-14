@@ -6,6 +6,26 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface PrescriptionRecordCreateInput {
+  consultId: string;
+  patientId: string;
+  doctorId: string;
+  date?: string;
+  medicine: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string;
+}
+
+export interface PrescriptionRecordUpdateInput {
+  medicine?: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+}
+
 export const prescriptionService = {
   async getAll(params?: { patientId?: string; consultId?: string }): Promise<Prescription[]> {
     try {
@@ -45,6 +65,11 @@ export const prescriptionService = {
     }
   },
 
+  async createRecord(data: PrescriptionRecordCreateInput): Promise<Prescription> {
+    const response = await apiClient.post<ApiResponse<Prescription>>('/api/v1/prescriptions', data);
+    return response.data.data;
+  },
+
   async update(id: string, data: Partial<PrescriptionFormData>): Promise<Prescription | undefined> {
     try {
       const response = await apiClient.patch<ApiResponse<Prescription>>(`/api/v1/prescriptions/${id}`, data);
@@ -53,6 +78,11 @@ export const prescriptionService = {
       console.error(`Failed to update prescription ${id}:`, error);
       return undefined;
     }
+  },
+
+  async updateRecord(id: string, data: PrescriptionRecordUpdateInput): Promise<Prescription> {
+    const response = await apiClient.patch<ApiResponse<Prescription>>(`/api/v1/prescriptions/${id}`, data);
+    return response.data.data;
   },
 
   async delete(id: string): Promise<boolean> {

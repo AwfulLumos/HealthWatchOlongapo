@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit2, Filter, ChevronLeft, ChevronRight, X, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Eye, Edit2, Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { patientService } from "../services/patientService";
 import { barangayService } from "../services";
 import type { Patient } from "../models";
 import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
+import { FormLoadingOverlay } from "../components/feedback/FormLoadingOverlay";
+import { StatusModal } from "../components/feedback/StatusModal";
 import { formatEntityId } from "../utils";
 
 type PatientModalMode = "view" | "add" | "edit";
@@ -61,62 +63,6 @@ function normalizePatientApi(p: any): Patient {
 function toDateInputValue(value: string | undefined): string {
   if (!value) return "";
   return value.includes("T") ? value.slice(0, 10) : value;
-}
-
-function SuccessModal({
-  title,
-  message,
-  onClose,
-}: {
-  title: string;
-  message?: string;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
-          <h2 className="text-gray-900 font-bold text-base sm:text-lg">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-green-700" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-gray-800 text-sm font-semibold">Success</p>
-              {message ? (
-                <p className="text-gray-500 text-xs sm:text-sm mt-1">{message}</p>
-              ) : (
-                <p className="text-gray-500 text-xs sm:text-sm mt-1">Your changes have been saved.</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 sm:p-5 border-t border-gray-100 flex justify-end bg-gray-50/50">
-          <button
-            onClick={onClose}
-            className="px-4 sm:px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg press-effect text-xs sm:text-sm font-semibold"
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function PatientModal(
@@ -244,21 +190,7 @@ function PatientModal(
           </button>
         </div>
 
-        {isSaving && (
-          <div
-            className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm"
-            role="status"
-            aria-live="polite"
-          >
-            <div className="bg-white border border-gray-200 rounded-xl shadow-card px-6 py-5 flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
-              <div className="text-center">
-                <p className="text-gray-900 font-semibold text-sm">Saving patient…</p>
-                <p className="text-gray-500 text-xs">Please wait</p>
-              </div>
-            </div>
-          </div>
-        )}
+        <FormLoadingOverlay open={isSaving} title="Saving patient..." />
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Patient Info */}
@@ -716,7 +648,9 @@ export function PatientsPage() {
       )}
 
       {successModal && (
-        <SuccessModal
+        <StatusModal
+          open={Boolean(successModal)}
+          variant="success"
           title={successModal.title}
           message={successModal.message}
           onClose={() => setSuccessModal(null)}

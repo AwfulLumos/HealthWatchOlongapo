@@ -6,6 +6,31 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface VitalSignsRecordCreateInput {
+  patientId: string;
+  consultId?: string;
+  date?: string;
+  bpSystolic: number;
+  bpDiastolic: number;
+  pulseRate: number;
+  respRate: number;
+  temperature: number;
+  bloodSugar?: number;
+  weight: number;
+  height: number;
+}
+
+export interface VitalSignsRecordUpdateInput {
+  bpSystolic?: number;
+  bpDiastolic?: number;
+  pulseRate?: number;
+  respRate?: number;
+  temperature?: number;
+  bloodSugar?: number;
+  weight?: number;
+  height?: number;
+}
+
 export const vitalSignsService = {
   async getAll(params?: { patientId?: string; consultId?: string }): Promise<VitalSigns[]> {
     try {
@@ -56,6 +81,11 @@ export const vitalSignsService = {
     }
   },
 
+  async createRecord(data: VitalSignsRecordCreateInput): Promise<VitalSigns> {
+    const response = await apiClient.post<ApiResponse<VitalSigns>>('/api/v1/vital-signs', data);
+    return response.data.data;
+  },
+
   async update(id: string, data: Partial<VitalSignsFormData>): Promise<VitalSigns | undefined> {
     try {
       const response = await apiClient.patch<ApiResponse<VitalSigns>>(`/api/v1/vital-signs/${id}`, data);
@@ -64,6 +94,11 @@ export const vitalSignsService = {
       console.error(`Failed to update vital signs ${id}:`, error);
       return undefined;
     }
+  },
+
+  async updateRecord(id: string, data: VitalSignsRecordUpdateInput): Promise<VitalSigns> {
+    const response = await apiClient.patch<ApiResponse<VitalSigns>>(`/api/v1/vital-signs/${id}`, data);
+    return response.data.data;
   },
 
   async delete(id: string): Promise<boolean> {

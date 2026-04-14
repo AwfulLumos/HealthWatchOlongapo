@@ -19,6 +19,16 @@ export interface ConsultationCreateInput {
   notes?: string;
 }
 
+export interface ConsultationUpdateInput {
+  chiefComplaint?: string;
+  symptoms?: string;
+  diagnosis?: string;
+  icdCode?: string;
+  type?: 'Regular' | 'FollowUp' | 'Emergency';
+  status?: 'InProgress' | 'Completed' | 'Referred';
+  notes?: string;
+}
+
 export interface ConsultationCreationOptions {
   patients: Array<{
     id: string;
@@ -26,6 +36,14 @@ export interface ConsultationCreationOptions {
     lastName: string;
     fullName: string;
     status: string;
+  }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
   }>;
   defaultStaffId?: string;
 }
@@ -87,10 +105,10 @@ export const consultationService = {
   async getCreationOptions(): Promise<ConsultationCreationOptions> {
     try {
       const response = await apiClient.get<ApiResponse<ConsultationCreationOptions>>('/api/v1/consultations/creation-options');
-      return response.data.data || { patients: [] };
+      return response.data.data || { patients: [], staff: [] };
     } catch (error) {
       console.error('Failed to fetch consultation creation options:', error);
-      return { patients: [] };
+      return { patients: [], staff: [] };
     }
   },
 
@@ -102,6 +120,11 @@ export const consultationService = {
       console.error(`Failed to update consultation ${id}:`, error);
       return undefined;
     }
+  },
+
+  async updateRecord(id: string, data: ConsultationUpdateInput): Promise<Consultation> {
+    const response = await apiClient.patch<ApiResponse<Consultation>>(`/api/v1/consultations/${id}`, data);
+    return response.data.data;
   },
 
   async delete(id: string): Promise<boolean> {
