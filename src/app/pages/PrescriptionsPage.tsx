@@ -131,7 +131,7 @@ export function PrescriptionsPage() {
                 <span className="text-gray-400 text-[0.65rem] sm:text-xs">Prescribed by {rxList[0].doctor} on {rxList[0].date}</span>
               </div>
             </div>
-            <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
               {rxList.map(rx => (
                 <div key={rx.id} className="border border-gray-100 rounded-xl p-3 sm:p-4 hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
                   <div className="flex items-start justify-between mb-2 sm:mb-3">

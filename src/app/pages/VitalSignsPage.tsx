@@ -101,7 +101,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {[
           { label: "Avg Blood Pressure", value: "136/89", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
           { label: "Avg Pulse Rate", value: "85 bpm", icon: Activity, color: "text-orange-500", bg: "bg-orange-50" },
@@ -123,7 +123,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -176,7 +176,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Mobile Card View */}
-      <div className="lg:hidden space-y-3">
+      <div className="md:hidden space-y-3">
         {filtered.map((v) => {
           const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
           const bs = getBSStatus(v.bloodSugar);

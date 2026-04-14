@@ -12,8 +12,8 @@ const statusColor = {
 
 function AppointmentModal({ appt, onClose, mode }: { appt?: any; onClose: () => void; mode: "view" | "add" | "edit" }) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 sm:p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-4 animate-fade-in">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
           <h2 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">
             {mode === "add" ? "Schedule Appointment" : mode === "edit" ? "Edit Appointment" : "Appointment Details"}
@@ -166,6 +166,7 @@ export function AppointmentsPage() {
         <>
           {/* Desktop Table */}
           <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
@@ -204,8 +205,8 @@ export function AppointmentsPage() {
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[a.status as keyof typeof statusColor] || 'bg-gray-100 text-gray-600'}`}>{a.status}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 max-w-[120px] text-xs">
-                        <span className="truncate block">{a.notes || "—"}</span>
+                      <td className="px-4 py-3 text-gray-400 max-w-[100px] xl:max-w-[180px] text-xs">
+                        <span className="truncate block overflow-hidden">{a.notes || "—"}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -218,6 +219,7 @@ export function AppointmentsPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Mobile Card View */}
@@ -273,12 +275,12 @@ export function AppointmentsPage() {
               <button className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"><ChevronRight className="w-4 h-4" /></button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 mb-2">
             {daysOfWeek.map(d => (
               <div key={d} className="text-center text-gray-400 py-1 sm:py-2 text-[0.65rem] sm:text-xs font-semibold">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
             {calendarDays.map((day, i) => (
               <div
                 key={i}

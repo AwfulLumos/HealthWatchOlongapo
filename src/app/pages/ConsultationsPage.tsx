@@ -509,7 +509,7 @@ function ConsultationModal({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 px-3 sm:px-6 bg-gray-50/50 flex-shrink-0 overflow-x-auto">
+        <div className="flex border-b border-gray-100 px-2 sm:px-4 md:px-6 bg-gray-50/50 flex-shrink-0 overflow-x-auto gap-1 sm:gap-2">
           {[
             { key: "info", label: "Info" },
             { key: "vitals", label: "Vitals" },
