@@ -1,34 +1,47 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Patient, PatientFormData } from '../models';
 import { patientService } from '../services';
 
 export function usePatients() {
-  const [patients, setPatients] = useState<Patient[]>(() => patientService.getAll());
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeCount, setActiveCount] = useState(0);
 
-  const refresh = useCallback(() => {
-    setPatients(patientService.getAll());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await patientService.getAll();
+      setPatients(data);
+      const count = await patientService.getActiveCount();
+      setActiveCount(count);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const getById = useCallback((id: string) => {
-    return patientService.getById(id);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const getById = useCallback(async (id: string) => {
+    return await patientService.getById(id);
   }, []);
 
-  const search = useCallback((query: string) => {
-    return patientService.search(query);
+  const search = useCallback(async (query: string) => {
+    return await patientService.search(query);
   }, []);
 
-  const getByBarangay = useCallback((barangay: string) => {
-    return patientService.getByBarangay(barangay);
+  const getByBarangay = useCallback(async (barangay: string) => {
+    return await patientService.getByBarangay(barangay);
   }, []);
 
-  const create = useCallback((data: PatientFormData) => {
+  const create = useCallback(async (data: PatientFormData) => {
     setLoading(true);
     setError(null);
     try {
-      const newPatient = patientService.create(data);
-      refresh();
+      const newPatient = await patientService.create(data);
+      await refresh();
       return newPatient;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create patient');
@@ -38,12 +51,12 @@ export function usePatients() {
     }
   }, [refresh]);
 
-  const update = useCallback((id: string, data: Partial<Patient>) => {
+  const update = useCallback(async (id: string, data: Partial<Patient>) => {
     setLoading(true);
     setError(null);
     try {
-      const updated = patientService.update(id, data);
-      if (updated) refresh();
+      const updated = await patientService.update(id, data);
+      await refresh();
       return updated;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update patient');
@@ -53,12 +66,12 @@ export function usePatients() {
     }
   }, [refresh]);
 
-  const remove = useCallback((id: string) => {
+  const remove = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const success = patientService.delete(id);
-      if (success) refresh();
+      const success = await patientService.delete(id);
+      if (success) await refresh();
       return success;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete patient');
@@ -80,6 +93,6 @@ export function usePatients() {
     update,
     remove,
     count: patients.length,
-    activeCount: patientService.getActiveCount(),
+    activeCount,
   };
 }

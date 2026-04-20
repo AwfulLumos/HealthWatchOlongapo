@@ -1,82 +1,126 @@
 import type { Appointment, AppointmentFormData } from '../models';
-import { mockAppointments } from '../statics';
-import { storage, generateId } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'appointments';
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
 
-function getAppointments(): Appointment[] {
-  const stored = storage.get<Appointment[] | null>(STORAGE_KEY, null);
-  if (stored === null) {
-    const initialAppointments = mockAppointments as unknown as Appointment[];
-    storage.set(STORAGE_KEY, initialAppointments);
-    return initialAppointments;
-  }
-  return stored;
+export interface AppointmentCreationOptions {
+  patients: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    status: string;
+  }>;
+  staff: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: string;
+    accountStatus: string;
+  }>;
+  defaultStaffId?: string;
+}
+
+interface AppointmentQueryParams {
+  page?: number;
+  limit?: number;
+  patientId?: string;
+  staffId?: string;
+  status?: string | string[];
+  startDate?: string;
+  endDate?: string;
 }
 
 export const appointmentService = {
-  getAll(): Appointment[] {
-    return getAppointments();
+  async getAll(params?: AppointmentQueryParams): Promise<Appointment[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<Appointment[]>>('/api/v1/appointments', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error);
+      return [];
+    }
   },
 
-  getById(id: string): Appointment | undefined {
-    return getAppointments().find(a => a.id === id);
+  async getCreationOptions(): Promise<AppointmentCreationOptions> {
+    try {
+      const response = await apiClient.get<ApiResponse<AppointmentCreationOptions>>('/api/v1/appointments/creation-options');
+      return response.data.data || { patients: [], staff: [] };
+    } catch (error) {
+      console.error('Failed to fetch appointment creation options:', error);
+      return { patients: [], staff: [] };
+    }
   },
 
-  getByPatientId(patientId: string): Appointment[] {
-    return getAppointments().filter(a => a.patientId === patientId);
+  async getById(id: string): Promise<Appointment | undefined> {
+    try {
+      const response = await apiClient.get<ApiResponse<Appointment>>(`/api/v1/appointments/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch appointment ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getByDate(date: string): Appointment[] {
-    return getAppointments().filter(a => a.scheduledDate.startsWith(date));
+  async getByPatientId(patientId: string): Promise<Appointment[]> {
+    return this.getAll({ patientId });
   },
 
-  getUpcoming(): Appointment[] {
-    const now = new Date().toISOString();
-    return getAppointments()
-      .filter(a => a.scheduledDate > now && a.status !== 'Cancelled')
-      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+  async getByDate(date: string): Promise<Appointment[]> {
+    return this.getAll({ startDate: date, endDate: date });
   },
 
-  getTodayCount(): number {
+  async getUpcoming(): Promise<Appointment[]> {
     const today = new Date().toISOString().split('T')[0];
-    return this.getByDate(today).filter(a => a.status !== 'Cancelled').length;
+    const appointments = await this.getAll({ startDate: today, status: ['Pending', 'Confirmed'] });
+    return appointments.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
   },
 
-  create(data: AppointmentFormData): Appointment {
-    const appointments = getAppointments();
-    const newAppointment: Appointment = {
-      ...data,
-      id: generateId('A', appointments.map(a => a.id)),
-    };
-    storage.set(STORAGE_KEY, [...appointments, newAppointment]);
-    return newAppointment;
+  async getTodayCount(): Promise<number> {
+    const today = new Date().toISOString().split('T')[0];
+    const appointments = await this.getByDate(today);
+    return appointments.filter(a => a.status !== 'Cancelled').length;
   },
 
-  update(id: string, data: Partial<Appointment>): Appointment | undefined {
-    const appointments = getAppointments();
-    const index = appointments.findIndex(a => a.id === id);
-    if (index === -1) return undefined;
-
-    const updated = { ...appointments[index], ...data };
-    appointments[index] = updated;
-    storage.set(STORAGE_KEY, appointments);
-    return updated;
+  async create(data: AppointmentFormData): Promise<Appointment | null> {
+    try {
+      const response = await apiClient.post<ApiResponse<Appointment>>('/api/v1/appointments', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create appointment:', error);
+      return null;
+    }
   },
 
-  delete(id: string): boolean {
-    const appointments = getAppointments();
-    const filtered = appointments.filter(a => a.id !== id);
-    if (filtered.length === appointments.length) return false;
-    storage.set(STORAGE_KEY, filtered);
-    return true;
+  async update(id: string, data: Partial<AppointmentFormData>): Promise<Appointment | undefined> {
+    try {
+      const response = await apiClient.patch<ApiResponse<Appointment>>(`/api/v1/appointments/${id}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update appointment ${id}:`, error);
+      return undefined;
+    }
   },
 
-  cancel(id: string): Appointment | undefined {
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/api/v1/appointments/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete appointment ${id}:`, error);
+      return false;
+    }
+  },
+
+  async cancel(id: string): Promise<Appointment | undefined> {
     return this.update(id, { status: 'Cancelled' });
   },
 
-  complete(id: string): Appointment | undefined {
+  async complete(id: string): Promise<Appointment | undefined> {
     return this.update(id, { status: 'Completed' });
   },
 };

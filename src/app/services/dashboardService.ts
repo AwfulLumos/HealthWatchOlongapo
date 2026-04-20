@@ -1,64 +1,91 @@
 import type { DashboardData } from '../models';
-import { patientService } from './patientService';
-import { consultationService } from './consultationService';
-import { appointmentService } from './appointmentService';
-import { staffService } from './staffService';
-import {
-  statsCards,
-  consultationsChartData,
-  monthlyPatientData,
-  diagnosisData,
-  recentPatients,
-  upcomingAppointments,
-} from '../statics';
+import { apiClient } from './api';
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
 
 export const dashboardService = {
-  getStats() {
-    // Combine static data with live counts
-    return statsCards.map(card => {
-      switch (card.label) {
-        case 'Total Patients':
-          return { ...card, value: patientService.getCount().toLocaleString() };
-        case 'Consultations Today':
-          return { ...card, value: String(consultationService.getTodayCount()) };
-        case 'Appointments Today':
-          return { ...card, value: String(appointmentService.getTodayCount()) };
-        case 'Active Staff':
-          return { ...card, value: String(staffService.getActiveCount()) };
-        default:
-          return card;
-      }
-    });
+  async getStats() {
+    try {
+      const response = await apiClient.get<ApiResponse<any>>('/api/v1/dashboard/stats');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+      return [];
+    }
   },
 
-  getConsultationsChart() {
-    return consultationsChartData;
+  async getConsultationsChart() {
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/consultations-by-month');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch consultations chart:', error);
+      return [];
+    }
   },
 
-  getMonthlyPatients() {
-    return monthlyPatientData;
+  async getMonthlyPatients() {
+    // Can be implemented if backend provides this endpoint
+    return [];
   },
 
-  getDiagnosisBreakdown() {
-    return diagnosisData;
+  async getDiagnosisBreakdown() {
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/top-diagnoses');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch diagnosis breakdown:', error);
+      return [];
+    }
   },
 
-  getRecentActivity() {
-    return recentPatients;
+  async getRecentActivity() {
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/recent-patients');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+      return [];
+    }
   },
 
-  getUpcomingAppointments() {
-    return upcomingAppointments;
+  async getUpcomingAppointments() {
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/upcoming-appointments');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch upcoming appointments:', error);
+      return [];
+    }
   },
 
-  getDashboardData(): DashboardData {
+  async getDashboardData(): Promise<DashboardData> {
+    const [
+      stats,
+      consultationChart,
+      monthlyPatients,
+      diagnosisBreakdown,
+      recentActivity,
+      upcomingAppointments
+    ] = await Promise.all([
+      this.getStats(),
+      this.getConsultationsChart(),
+      this.getMonthlyPatients(),
+      this.getDiagnosisBreakdown(),
+      this.getRecentActivity(),
+      this.getUpcomingAppointments(),
+    ]);
+
     return {
-      stats: this.getStats(),
-      consultationChart: this.getConsultationsChart(),
-      monthlyPatients: this.getMonthlyPatients(),
-      diagnosisBreakdown: this.getDiagnosisBreakdown(),
-      recentActivity: this.getRecentActivity(),
-      upcomingAppointments: this.getUpcomingAppointments(),
+      stats,
+      consultationChart,
+      monthlyPatients,
+      diagnosisBreakdown,
+      recentActivity,
+      upcomingAppointments,
     };
   },
 };

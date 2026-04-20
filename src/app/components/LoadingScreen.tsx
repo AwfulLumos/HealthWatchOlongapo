@@ -6,27 +6,45 @@ interface LoadingScreenProps {
   userName?: string;
   onComplete?: () => void;
   duration?: number;
+  mode?: 'authenticating' | 'success';
+  errorMessage?: string;
 }
 
 export function LoadingScreen({ 
   userName = "User", 
   onComplete, 
-  duration = 2500 
+  duration = 2500,
+  mode = 'authenticating',
+  errorMessage
 }: LoadingScreenProps) {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
 
-  const steps = [
-    { icon: Shield, text: "Verifying credentials...", color: "text-blue-400" },
+  const authenticatingSteps = [
+    { icon: Shield, text: "Verifying credentials...", color: "text-blue-400" }
+  ];
+
+  const successSteps = [
+    { icon: Shield, text: "Credentials verified!", color: "text-green-400" },
     { icon: Stethoscope, text: "Loading health records...", color: "text-teal-400" },
     { icon: Heart, text: "Preparing dashboard...", color: "text-rose-400" },
   ];
 
+  const steps = mode === 'authenticating' ? authenticatingSteps : successSteps;
+
   useEffect(() => {
-    const stepDuration = duration / steps.length;
+    // If there's an error, don't start animation
+    if (errorMessage) {
+      return;
+    }
+
+    // For authenticating mode, use infinite progress animation without auto-complete
+    // For success mode, complete in the specified duration
+    const actualDuration = mode === 'authenticating' ? 30000 : duration; // 30s max for auth
+    const stepDuration = actualDuration / steps.length;
     const progressInterval = 30;
-    const progressIncrement = 100 / (duration / progressInterval);
+    const progressIncrement = 100 / (actualDuration / progressInterval);
 
     const progressTimer = setInterval(() => {
       setProgress((prev) => {
@@ -42,19 +60,23 @@ export function LoadingScreen({
       });
     }, stepDuration);
 
-    const completeTimer = setTimeout(() => {
-      setFadeOut(true);
-      setTimeout(() => {
-        onComplete?.();
-      }, 400);
-    }, duration);
+    // Only complete if in success mode
+    let completeTimer: ReturnType<typeof setTimeout> | undefined;
+    if (mode === 'success') {
+      completeTimer = setTimeout(() => {
+        setFadeOut(true);
+        setTimeout(() => {
+          onComplete?.();
+        }, 400);
+      }, actualDuration);
+    }
 
     return () => {
       clearInterval(progressTimer);
       clearInterval(stepTimer);
-      clearTimeout(completeTimer);
+      if (completeTimer) clearTimeout(completeTimer);
     };
-  }, [duration, onComplete, steps.length]);
+  }, [duration, onComplete, steps.length, mode, errorMessage]);
 
   const CurrentIcon = steps[currentStep].icon;
 
@@ -86,12 +108,25 @@ export function LoadingScreen({
         </div>
 
         {/* Welcome Text - Increased */}
-        <h1 className="text-white text-2xl sm:text-3xl font-bold mb-2.5 animate-fade-in text-center">
-          Welcome back, {userName}
-        </h1>
-        <p className="text-blue-200 text-sm sm:text-base mb-7 sm:mb-9 animate-fade-in animation-delay-200">
-          Health Watch Olongapo
-        </p>
+        {mode === 'success' ? (
+          <>
+            <h1 className="text-white text-2xl sm:text-3xl font-bold mb-2.5 animate-fade-in text-center">
+              Welcome back, {userName}
+            </h1>
+            <p className="text-blue-200 text-sm sm:text-base mb-7 sm:mb-9 animate-fade-in animation-delay-200">
+              Health Watch Olongapo
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-white text-2xl sm:text-3xl font-bold mb-2.5 animate-fade-in text-center">
+              Authenticating...
+            </h1>
+            <p className="text-blue-200 text-sm sm:text-base mb-7 sm:mb-9 animate-fade-in animation-delay-200">
+              Please wait
+            </p>
+          </>
+        )}
 
         {/* Current Step Indicator - Increased */}
         <div className="flex items-center gap-2.5 sm:gap-3.5 mb-6 sm:mb-7 animate-fade-in animation-delay-300">
@@ -102,7 +137,7 @@ export function LoadingScreen({
         </div>
 
         {/* Progress Bar - Wider */}
-        <div className="w-56 sm:w-72 h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="w-full max-w-[18rem] sm:max-w-[20rem] h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
           <div
             className="h-full bg-gradient-to-r from-blue-400 via-teal-400 to-green-400 rounded-full transition-all duration-100 ease-out"
             style={{ width: `${progress}%` }}

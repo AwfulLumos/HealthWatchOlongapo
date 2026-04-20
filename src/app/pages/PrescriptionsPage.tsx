@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Search, Pill, Eye, X } from "lucide-react";
-import { mockPrescriptions } from "../statics/prescriptions";
+import { prescriptionService } from "../services/prescriptionService";
 import { PrescriptionsSkeleton } from "../components/skeletons/PrescriptionsSkeleton";
+import { formatEntityId } from "../utils";
 
 function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
   return (
@@ -26,8 +27,8 @@ function ViewModal({ rx, onClose }: { rx: any; onClose: () => void }) {
           </div>
           <div className="space-y-2 sm:space-y-3">
             {[
-              { label: "Prescription ID", value: rx.id },
-              { label: "Consultation ID", value: rx.consultId },
+              { label: "Prescription ID", value: formatEntityId(rx.id, "RX") },
+              { label: "Consultation ID", value: formatEntityId(rx.consultId, "CON") },
               { label: "Patient", value: rx.patient },
               { label: "Prescribed by", value: rx.doctor },
               { label: "Date", value: rx.date },
@@ -55,22 +56,35 @@ export function PrescriptionsPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchPrescriptions = async () => {
+      setIsLoading(true);
+      const data = await prescriptionService.getAll();
+      // Transform nested patient/doctor objects to flat strings
+      const transformed = data.map((rx: any) => ({
+        ...rx,
+        patient: typeof rx.patient === 'object' 
+          ? `${rx.patient?.firstName || ''} ${rx.patient?.lastName || ''}`.trim() 
+          : rx.patient || "Unknown",
+        doctor: typeof rx.doctor === 'object' 
+          ? `${rx.doctor?.firstName || ''} ${rx.doctor?.lastName || ''}`.trim() 
+          : rx.doctor || "Unknown",
+        consultId: rx.consultId || rx.consultation?.id || "N/A",
+      }));
+      setPrescriptions(transformed);
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchPrescriptions();
   }, []);
 
-  const filtered = mockPrescriptions.filter(rx =>
+  const filtered = prescriptions.filter(rx =>
     `${rx.patient} ${rx.medicine} ${rx.id} ${rx.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
 
   // Group by consultation
-  const grouped: Record<string, typeof mockPrescriptions> = {};
+  const grouped: Record<string, any[]> = {};
   filtered.forEach(rx => {
     if (!grouped[rx.consultId]) grouped[rx.consultId] = [];
     grouped[rx.consultId].push(rx);
@@ -109,7 +123,7 @@ export function PrescriptionsPage() {
           <div key={consultId} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 px-3 sm:px-5 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3">
               <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                <span className="text-blue-600 text-xs sm:text-sm font-bold">{consultId}</span>
+                <span className="text-blue-600 text-xs sm:text-sm font-bold" title={consultId}>{formatEntityId(consultId, "CON")}</span>
                 <span className="text-gray-500 hidden sm:inline">&mdash;</span>
                 <span className="text-gray-700 text-xs sm:text-sm font-medium">{rxList[0].patient}</span>
               </div>
@@ -117,7 +131,7 @@ export function PrescriptionsPage() {
                 <span className="text-gray-400 text-[0.65rem] sm:text-xs">Prescribed by {rxList[0].doctor} on {rxList[0].date}</span>
               </div>
             </div>
-            <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
               {rxList.map(rx => (
                 <div key={rx.id} className="border border-gray-100 rounded-xl p-3 sm:p-4 hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
                   <div className="flex items-start justify-between mb-2 sm:mb-3">
@@ -127,7 +141,7 @@ export function PrescriptionsPage() {
                       </div>
                       <div>
                         <p className="text-gray-800 text-xs sm:text-sm font-bold">{rx.medicine}</p>
-                        <p className="text-gray-400 text-[0.65rem] sm:text-xs">{rx.id}</p>
+                        <p className="text-gray-400 text-[0.65rem] sm:text-xs" title={rx.id}>{formatEntityId(rx.id, "RX")}</p>
                       </div>
                     </div>
                     <button

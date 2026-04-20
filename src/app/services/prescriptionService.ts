@@ -1,68 +1,102 @@
 import type { Prescription, PrescriptionFormData } from '../models';
-import { mockPrescriptions as initialPrescriptions } from '../statics';
-import { storage, generateId } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'prescriptions';
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
 
-function getPrescriptions(): Prescription[] {
-  const stored = storage.get<Prescription[] | null>(STORAGE_KEY, null);
-  if (stored === null) {
-    storage.set(STORAGE_KEY, initialPrescriptions);
-    return initialPrescriptions;
-  }
-  return stored;
+export interface PrescriptionRecordCreateInput {
+  consultId: string;
+  patientId: string;
+  doctorId: string;
+  date?: string;
+  medicine: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions?: string;
+}
+
+export interface PrescriptionRecordUpdateInput {
+  medicine?: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
 }
 
 export const prescriptionService = {
-  getAll(): Prescription[] {
-    return getPrescriptions();
+  async getAll(params?: { patientId?: string; consultId?: string }): Promise<Prescription[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<Prescription[]>>('/api/v1/prescriptions', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch prescriptions:', error);
+      return [];
+    }
   },
 
-  getById(id: string): Prescription | undefined {
-    return getPrescriptions().find(p => p.id === id);
+  async getById(id: string): Promise<Prescription | undefined> {
+    try {
+      const response = await apiClient.get<ApiResponse<Prescription>>(`/api/v1/prescriptions/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch prescription ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getByConsultationId(consultId: string): Prescription[] {
-    return getPrescriptions().filter(p => p.consultId === consultId);
+  async getByConsultationId(consultId: string): Promise<Prescription[]> {
+    return this.getAll({ consultId });
   },
 
-  getByPatient(patientName: string): Prescription[] {
-    return getPrescriptions().filter(p => 
-      p.patient.toLowerCase().includes(patientName.toLowerCase())
-    );
+  async getByPatient(patientId: string): Promise<Prescription[]> {
+    return this.getAll({ patientId });
   },
 
-  create(data: PrescriptionFormData): Prescription {
-    const prescriptions = getPrescriptions();
-    const newPrescription: Prescription = {
-      ...data,
-      id: generateId('RX', prescriptions.map(p => p.id)),
-    };
-    storage.set(STORAGE_KEY, [...prescriptions, newPrescription]);
-    return newPrescription;
+  async create(data: PrescriptionFormData): Promise<Prescription | null> {
+    try {
+      const response = await apiClient.post<ApiResponse<Prescription>>('/api/v1/prescriptions', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create prescription:', error);
+      return null;
+    }
   },
 
-  update(id: string, data: Partial<Prescription>): Prescription | undefined {
-    const prescriptions = getPrescriptions();
-    const index = prescriptions.findIndex(p => p.id === id);
-    if (index === -1) return undefined;
-
-    const updated = { ...prescriptions[index], ...data };
-    prescriptions[index] = updated;
-    storage.set(STORAGE_KEY, prescriptions);
-    return updated;
+  async createRecord(data: PrescriptionRecordCreateInput): Promise<Prescription> {
+    const response = await apiClient.post<ApiResponse<Prescription>>('/api/v1/prescriptions', data);
+    return response.data.data;
   },
 
-  delete(id: string): boolean {
-    const prescriptions = getPrescriptions();
-    const filtered = prescriptions.filter(p => p.id !== id);
-    if (filtered.length === prescriptions.length) return false;
-    storage.set(STORAGE_KEY, filtered);
-    return true;
+  async update(id: string, data: Partial<PrescriptionFormData>): Promise<Prescription | undefined> {
+    try {
+      const response = await apiClient.patch<ApiResponse<Prescription>>(`/api/v1/prescriptions/${id}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update prescription ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getMedicineStats(): { medicine: string; count: number }[] {
-    const prescriptions = getPrescriptions();
+  async updateRecord(id: string, data: PrescriptionRecordUpdateInput): Promise<Prescription> {
+    const response = await apiClient.patch<ApiResponse<Prescription>>(`/api/v1/prescriptions/${id}`, data);
+    return response.data.data;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/api/v1/prescriptions/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete prescription ${id}:`, error);
+      return false;
+    }
+  },
+
+  async getMedicineStats(): Promise<{ medicine: string; count: number }[]> {
+    const prescriptions = await this.getAll();
     const medicineCounts = prescriptions.reduce((acc, p) => {
       acc[p.medicine] = (acc[p.medicine] || 0) + 1;
       return acc;

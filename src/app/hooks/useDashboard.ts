@@ -1,16 +1,33 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { DashboardData } from '../models';
 import { dashboardService } from '../services';
 
-export function useDashboard() {
-  const [data, setData] = useState<DashboardData>(() => dashboardService.getDashboardData());
-  const [loading, setLoading] = useState(false);
+const initialDashboardData: DashboardData = {
+  stats: [],
+  consultationChart: [],
+  monthlyPatients: [],
+  diagnosisBreakdown: [],
+  recentActivity: [],
+  upcomingAppointments: [],
+};
 
-  const refresh = useCallback(() => {
+export function useDashboard() {
+  const [data, setData] = useState<DashboardData>(initialDashboardData);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
-    setData(dashboardService.getDashboardData());
-    setLoading(false);
+    try {
+      const dashboardData = await dashboardService.getDashboardData();
+      setData(dashboardData);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return {
     ...data,

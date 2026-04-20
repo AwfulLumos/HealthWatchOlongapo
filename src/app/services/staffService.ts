@@ -1,88 +1,95 @@
 import type { Staff, StaffFormData } from '../models';
-import { mockStaff } from '../statics';
-import { storage, generateId } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'staff';
-
-function getStaff(): Staff[] {
-  const stored = storage.get<Staff[] | null>(STORAGE_KEY, null);
-  if (stored === null) {
-    const initialStaff = mockStaff as unknown as Staff[];
-    storage.set(STORAGE_KEY, initialStaff);
-    return initialStaff;
-  }
-  return stored;
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
 }
 
 export const staffService = {
-  getAll(): Staff[] {
-    return getStaff();
+  async getAll(params?: { role?: string; stationId?: string; status?: string }): Promise<Staff[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<Staff[]>>('/api/v1/staff', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch staff:', error);
+      return [];
+    }
   },
 
-  getById(id: string): Staff | undefined {
-    return getStaff().find(s => s.id === id);
+  async getById(id: string): Promise<Staff | undefined> {
+    try {
+      const response = await apiClient.get<ApiResponse<Staff>>(`/api/v1/staff/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch staff ${id}:`, error);
+      return undefined;
+    }
   },
 
-  getByRole(role: Staff['role']): Staff[] {
-    return getStaff().filter(s => s.role === role);
+  async getByRole(role: Staff['role']): Promise<Staff[]> {
+    return this.getAll({ role });
   },
 
-  getByStation(station: string): Staff[] {
-    return getStaff().filter(s => s.station === station);
+  async getByStation(stationId: string): Promise<Staff[]> {
+    return this.getAll({ stationId });
   },
 
-  getActive(): Staff[] {
-    return getStaff().filter(s => s.accountStatus === 'Active');
+  async getActive(): Promise<Staff[]> {
+    return this.getAll({ status: 'Active' });
   },
 
-  getActiveCount(): number {
-    return this.getActive().length;
+  async getActiveCount(): Promise<number> {
+    const activeStaff = await this.getActive();
+    return activeStaff.length;
   },
 
-  search(query: string): Staff[] {
+  async search(query: string): Promise<Staff[]> {
+    const allStaff = await this.getAll();
     const q = query.toLowerCase();
-    return getStaff().filter(s =>
+    return allStaff.filter(s =>
       s.firstName.toLowerCase().includes(q) ||
       s.lastName.toLowerCase().includes(q) ||
       s.id.toLowerCase().includes(q) ||
-      s.email.toLowerCase().includes(q)
+      s.email?.toLowerCase().includes(q)
     );
   },
 
-  create(data: StaffFormData): Staff {
-    const staffList = getStaff();
-    const newStaff: Staff = {
-      ...data,
-      id: generateId('S', staffList.map(s => s.id)),
-    };
-    storage.set(STORAGE_KEY, [...staffList, newStaff]);
-    return newStaff;
+  async create(data: StaffFormData): Promise<Staff | null> {
+    try {
+      const response = await apiClient.post<ApiResponse<Staff>>('/api/v1/staff', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create staff:', error);
+      return null;
+    }
   },
 
-  update(id: string, data: Partial<Staff>): Staff | undefined {
-    const staffList = getStaff();
-    const index = staffList.findIndex(s => s.id === id);
-    if (index === -1) return undefined;
-
-    const updated = { ...staffList[index], ...data };
-    staffList[index] = updated;
-    storage.set(STORAGE_KEY, staffList);
-    return updated;
+  async update(id: string, data: Partial<StaffFormData>): Promise<Staff | undefined> {
+    try {
+      const response = await apiClient.patch<ApiResponse<Staff>>(`/api/v1/staff/${id}`, data);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to update staff ${id}:`, error);
+      return undefined;
+    }
   },
 
-  delete(id: string): boolean {
-    const staffList = getStaff();
-    const filtered = staffList.filter(s => s.id !== id);
-    if (filtered.length === staffList.length) return false;
-    storage.set(STORAGE_KEY, filtered);
-    return true;
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/api/v1/staff/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete staff ${id}:`, error);
+      return false;
+    }
   },
 
-  deactivate(id: string): Staff | undefined {
+  async deactivate(id: string): Promise<Staff | undefined> {
     return this.update(id, { accountStatus: 'Inactive' });
   },
 
-  activate(id: string): Staff | undefined {
+  async activate(id: string): Promise<Staff | undefined> {
     return this.update(id, { accountStatus: 'Active' });
   },
 };

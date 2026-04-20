@@ -1,31 +1,57 @@
 import { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, Users, Stethoscope, Activity, Building2, Heart, Pill } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import {
-  monthlyConsultations,
-  diagnosisBreakdown,
-  stationPerformanceData,
-  genderDistribution,
-  reportCards,
-} from "../statics/reports";
+import { dashboardService } from "../services/dashboardService";
 import { ReportsSkeleton } from "../components/skeletons/ReportsSkeleton";
-
-const stationData = stationPerformanceData;
-const genderData = genderDistribution;
 
 export function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [monthlyConsultations, setMonthlyConsultations] = useState<any[]>([]);
+  const [diagnosisBreakdown, setDiagnosisBreakdown] = useState<any[]>([]);
+  const [stationData, setStationData] = useState<any[]>([]);
+  const [genderData, setGenderData] = useState<any[]>([]);
+  const reportCards = [
+    { title: "Patient Demographics", desc: "Complete patient statistics", icon: Users, color: "bg-blue-100 text-blue-600" },
+    { title: "Consultation Summary", desc: "Monthly consultation breakdown", icon: Stethoscope, color: "bg-green-100 text-green-600" },
+    { title: "Diagnosis Report", desc: "Top diagnoses and trends", icon: Activity, color: "bg-purple-100 text-purple-600" },
+    { title: "Station Performance", desc: "Barangay health station metrics", icon: Building2, color: "bg-orange-100 text-orange-600" },
+    { title: "Vital Signs Summary", desc: "Population health indicators", icon: Heart, color: "bg-red-100 text-red-600" },
+    { title: "Prescription Analytics", desc: "Medication dispensing report", icon: Pill, color: "bg-teal-100 text-teal-600" },
+  ];
+
+// Default colors for charts
+const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6"];
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-
-    return () => clearTimeout(timer);
+    const fetchReportsData = async () => {
+      setIsLoading(true);
+      try {
+        const [consultationChart, diagnosisData] = await Promise.all([
+          dashboardService.getConsultationsChart(),
+          dashboardService.getDiagnosisBreakdown(),
+        ]);
+        
+        setMonthlyConsultations(consultationChart);
+        // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
+        const transformedDiagnosis = (diagnosisData || []).map((item: any, index: number) => ({
+          name: item.diagnosis || item.name || "Unknown",
+          value: item.count || item.value || 0,
+          color: item.color || chartColors[index % chartColors.length],
+        }));
+        setDiagnosisBreakdown(transformedDiagnosis);
+        // Set placeholder data for station and gender until backend provides endpoints
+        setStationData([]);
+        setGenderData([]);
+      } catch (error) {
+        console.error('Failed to fetch reports data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReportsData();
   }, []);
 
   if (isLoading) {
@@ -51,7 +77,7 @@ export function ReportsPage() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: "Total Patients (Mar)", value: "312", change: "+5.4%", up: true },
           { label: "Consultations (Mar)", value: "190", change: "+8.2%", up: true },
@@ -73,7 +99,7 @@ export function ReportsPage() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 animate-fade-in-up" style={{ animationDelay: "150ms" }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 animate-fade-in-up" style={{ animationDelay: "150ms" }}>
         {/* Monthly Consultations */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-3 sm:p-5 hover:shadow-md transition-all duration-300">
           <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Consultations by Type (Last 6 Months)</h3>
@@ -119,7 +145,7 @@ export function ReportsPage() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Station comparison */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
           <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Station Performance</h3>
@@ -162,7 +188,7 @@ export function ReportsPage() {
               ))}
             </div>
           </div>
-          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100 grid grid-cols-3 gap-2">
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
               { label: "0–17 yrs", value: "18%", color: "text-blue-500" },
               { label: "18–59 yrs", value: "55%", color: "text-teal-500" },

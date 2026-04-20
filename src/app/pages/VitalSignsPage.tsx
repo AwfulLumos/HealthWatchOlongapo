@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Search, Activity, Heart, Thermometer, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { mockVitals, bpTrendData } from "../statics/vitals";
+import { vitalSignsService } from "../services/vitalSignsService";
 import { VitalSignsSkeleton } from "../components/skeletons/VitalSignsSkeleton";
+import { formatEntityId } from "../utils";
 
 function getBPStatus(systolic: number, diastolic: number) {
   if (systolic >= 140 || diastolic >= 90) return { label: "High", color: "text-red-600", bg: "bg-red-100" };
@@ -20,17 +21,31 @@ export function VitalSignsPage() {
   const [search, setSearch] = useState("");
   const [showTrend, setShowTrend] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [vitals, setVitals] = useState<any[]>([]);
+  const [bpTrendData, setBpTrendData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate data loading - replace with actual API call when backend is ready
-    const timer = setTimeout(() => {
+    const fetchVitals = async () => {
+      setIsLoading(true);
+      const data = await vitalSignsService.getAll();
+      // Transform nested patient object to flat string
+      const transformed = data.map((v: any) => ({
+        ...v,
+        patient: typeof v.patient === 'object' 
+          ? `${v.patient?.firstName || ''} ${v.patient?.lastName || ''}`.trim() 
+          : v.patient || "Unknown",
+      }));
+      setVitals(transformed);
+      // You can fetch trend data for a specific patient if available
+      // const trend = await vitalSignsService.getTrend(patientId);
+      // setBpTrendData(trend);
+      setBpTrendData([]); // Empty for now
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    };
+    fetchVitals();
   }, []);
 
-  const filtered = mockVitals.filter(v =>
+  const filtered = vitals.filter(v =>
     `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -86,7 +101,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {[
           { label: "Avg Blood Pressure", value: "136/89", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
           { label: "Avg Pulse Rate", value: "85 bpm", icon: Activity, color: "text-orange-500", bg: "bg-orange-50" },
@@ -108,7 +123,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -127,8 +142,8 @@ export function VitalSignsPage() {
                 return (
                   <tr key={v.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
                     <td className="px-4 py-3">
-                      <span className="text-blue-600 text-xs font-semibold">{v.id}</span>
-                      <p className="text-gray-400 text-[0.65rem]">{v.consultId}</p>
+                      <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
+                      <p className="text-gray-400 text-[0.65rem]" title={v.consultId}>{formatEntityId(v.consultId, "CON")}</p>
                     </td>
                     <td className="px-4 py-3 text-gray-800 text-sm font-medium">{v.patient}</td>
                     <td className="px-4 py-3 text-gray-500 text-sm">{v.date}</td>
@@ -161,7 +176,7 @@ export function VitalSignsPage() {
       </div>
 
       {/* Mobile Card View */}
-      <div className="lg:hidden space-y-3">
+      <div className="md:hidden space-y-3">
         {filtered.map((v) => {
           const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
           const bs = getBSStatus(v.bloodSugar);
@@ -169,11 +184,11 @@ export function VitalSignsPage() {
             <div key={v.id} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="text-blue-600 text-xs font-semibold">{v.id}</span>
+                  <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
                   <p className="text-gray-800 text-sm font-semibold mt-0.5">{v.patient}</p>
                   <p className="text-gray-400 text-xs">{v.date}</p>
                 </div>
-                <span className="text-gray-400 text-[0.65rem]">{v.consultId}</span>
+                <span className="text-gray-400 text-[0.65rem]" title={v.consultId}>{formatEntityId(v.consultId, "CON")}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div className="bg-red-50 rounded-lg p-2">

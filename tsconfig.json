@@ -19,12 +19,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-
-    /* Path aliases */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "ignoreDeprecations": "5.0",
   },
   "include": ["src/**/*", "src/**/*.tsx", "src/**/*.ts", "src/vite-env.d.ts"]
 }

@@ -1,89 +1,62 @@
 import type { User, LoginCredentials, AuthState } from '../models';
-import { storage } from './storage';
+import { apiClient } from './api';
 
-const STORAGE_KEY = 'auth';
-const USERS_KEY = 'users';
-
-// Default demo users
-const defaultUsers: (User & { password: string })[] = [
-  {
-    id: 'U-0001',
-    username: 'admin',
-    password: 'admin123',
-    email: 'admin@healthwatch.ph',
-    role: 'Admin',
-    accountStatus: 'Active',
-  },
-  {
-    id: 'U-0002',
-    username: 'doctor',
-    password: 'doctor123',
-    email: 'doctor@healthwatch.ph',
-    role: 'Doctor',
-    staffId: 'S-0001',
-    accountStatus: 'Active',
-  },
-  {
-    id: 'U-0003',
-    username: 'nurse',
-    password: 'nurse123',
-    email: 'nurse@healthwatch.ph',
-    role: 'Nurse',
-    staffId: 'S-0002',
-    accountStatus: 'Active',
-  },
-];
-
-function getUsers(): (User & { password: string })[] {
-  const stored = storage.get<(User & { password: string })[] | null>(USERS_KEY, null);
-  if (stored === null) {
-    storage.set(USERS_KEY, defaultUsers);
-    return defaultUsers;
-  }
-  return stored;
-}
+const AUTH_TOKEN_KEY = 'authToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
+const USER_KEY = 'user';
 
 function getAuthState(): AuthState {
-  return storage.get<AuthState>(STORAGE_KEY, { user: null, isAuthenticated: false });
+  const user = localStorage.getItem(USER_KEY);
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return {
+    user: user ? JSON.parse(user) : null,
+    isAuthenticated: !!token,
+  };
 }
 
-function setAuthState(state: AuthState): void {
-  storage.set(STORAGE_KEY, state);
+function setAuthState(user: User | null, accessToken?: string, refreshToken?: string): void {
+  if (user && accessToken) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_TOKEN_KEY, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
+  } else {
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
 }
 
 export const authService = {
-  login(credentials: LoginCredentials): { success: boolean; user?: User; error?: string } {
-    const users = getUsers();
-    const user = users.find(
-      u => u.username === credentials.username && u.password === credentials.password
-    );
-
-    if (!user) {
-      return { success: false, error: 'Invalid username or password' };
+  async login(credentials: LoginCredentials): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await apiClient.post('/api/v1/auth/login', credentials);
+      
+      if (response.data.success) {
+        const { user, accessToken, refreshToken } = response.data.data;
+        setAuthState(user, accessToken, refreshToken);
+        return { success: true, user };
+      }
+      
+      return { success: false, error: response.data.message || 'Login failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Network error. Please try again.';
+      return { success: false, error: errorMessage };
     }
-
-    if (user.accountStatus === 'Inactive') {
-      return { success: false, error: 'Account is inactive' };
-    }
-
-    // Update last login
-    const userIndex = users.findIndex(u => u.id === user.id);
-    users[userIndex] = { ...user, lastLogin: new Date().toISOString() };
-    storage.set(USERS_KEY, users);
-
-    // Create auth state (exclude password)
-    const { password: _, ...userWithoutPassword } = user;
-    const authState: AuthState = {
-      user: userWithoutPassword,
-      isAuthenticated: true,
-    };
-    setAuthState(authState);
-
-    return { success: true, user: userWithoutPassword };
   },
 
-  logout(): void {
-    setAuthState({ user: null, isAuthenticated: false });
+  async logout(): Promise<void> {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        await apiClient.post('/api/v1/auth/logout', { refreshToken });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setAuthState(null);
+    }
   },
 
   getCurrentUser(): User | null {
@@ -98,21 +71,72 @@ export const authService = {
     return getAuthState();
   },
 
-  changePassword(userId: string, oldPassword: string, newPassword: string): { success: boolean; error?: string } {
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
+  async refreshToken(): Promise<boolean> {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!refreshToken) return false;
 
-    if (userIndex === -1) {
-      return { success: false, error: 'User not found' };
+      const response = await apiClient.post('/api/v1/auth/refresh', { refreshToken });
+      
+      if (response.data.success) {
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+        const currentUser = getAuthState().user;
+        if (currentUser) {
+          setAuthState(currentUser, accessToken, newRefreshToken);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      setAuthState(null);
+      return false;
     }
+  },
 
-    if (users[userIndex].password !== oldPassword) {
-      return { success: false, error: 'Current password is incorrect' };
+  async changePassword(_userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await apiClient.post('/api/v1/auth/change-password', {
+        oldPassword,
+        newPassword,
+      });
+      
+      if (response.data.success) {
+        return { success: true };
+      }
+      
+      return { success: false, error: response.data.message || 'Password change failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to change password';
+      return { success: false, error: errorMessage };
     }
+  },
 
-    users[userIndex] = { ...users[userIndex], password: newPassword };
-    storage.set(USERS_KEY, users);
+  async register(data: { username: string; email: string; password: string; role: string; staffId?: string }): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await apiClient.post('/api/v1/auth/register', data);
+      
+      if (response.data.success) {
+        return { success: true, user: response.data.data };
+      }
+      
+      return { success: false, error: response.data.message || 'Registration failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      return { success: false, error: errorMessage };
+    }
+  },
 
-    return { success: true };
+  async getProfile(): Promise<User | null> {
+    try {
+      const response = await apiClient.get('/api/v1/auth/profile');
+      if (response.data.success) {
+        const user = response.data.data;
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        return user;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
   },
 };

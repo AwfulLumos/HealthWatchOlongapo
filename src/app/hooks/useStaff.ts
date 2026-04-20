@@ -1,42 +1,55 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Staff, StaffFormData } from '../models';
 import { staffService } from '../services';
 
 export function useStaff() {
-  const [staff, setStaff] = useState<Staff[]>(() => staffService.getAll());
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeCount, setActiveCount] = useState(0);
 
-  const refresh = useCallback(() => {
-    setStaff(staffService.getAll());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await staffService.getAll();
+      setStaff(data);
+      const count = await staffService.getActiveCount();
+      setActiveCount(count);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const getById = useCallback((id: string) => {
-    return staffService.getById(id);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const getById = useCallback(async (id: string) => {
+    return await staffService.getById(id);
   }, []);
 
-  const getByRole = useCallback((role: Staff['role']) => {
-    return staffService.getByRole(role);
+  const getByRole = useCallback(async (role: Staff['role']) => {
+    return await staffService.getByRole(role);
   }, []);
 
-  const getByStation = useCallback((station: string) => {
-    return staffService.getByStation(station);
+  const getByStation = useCallback(async (station: string) => {
+    return await staffService.getByStation(station);
   }, []);
 
-  const getActive = useCallback(() => {
-    return staffService.getActive();
+  const getActive = useCallback(async () => {
+    return await staffService.getActive();
   }, []);
 
-  const search = useCallback((query: string) => {
-    return staffService.search(query);
+  const search = useCallback(async (query: string) => {
+    return await staffService.search(query);
   }, []);
 
-  const create = useCallback((data: StaffFormData) => {
+  const create = useCallback(async (data: StaffFormData) => {
     setLoading(true);
     setError(null);
     try {
-      const newStaff = staffService.create(data);
-      refresh();
+      const newStaff = await staffService.create(data);
+      await refresh();
       return newStaff;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add staff');
@@ -46,12 +59,12 @@ export function useStaff() {
     }
   }, [refresh]);
 
-  const update = useCallback((id: string, data: Partial<Staff>) => {
+  const update = useCallback(async (id: string, data: Partial<Staff>) => {
     setLoading(true);
     setError(null);
     try {
-      const updated = staffService.update(id, data);
-      if (updated) refresh();
+      const updated = await staffService.update(id, data);
+      if (updated) await refresh();
       return updated;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update staff');
@@ -61,12 +74,12 @@ export function useStaff() {
     }
   }, [refresh]);
 
-  const remove = useCallback((id: string) => {
+  const remove = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const success = staffService.delete(id);
-      if (success) refresh();
+      const success = await staffService.delete(id);
+      if (success) await refresh();
       return success;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove staff');
@@ -76,15 +89,15 @@ export function useStaff() {
     }
   }, [refresh]);
 
-  const activate = useCallback((id: string) => {
-    const result = staffService.activate(id);
-    if (result) refresh();
+  const activate = useCallback(async (id: string) => {
+    const result = await staffService.activate(id);
+    if (result) await refresh();
     return result;
   }, [refresh]);
 
-  const deactivate = useCallback((id: string) => {
-    const result = staffService.deactivate(id);
-    if (result) refresh();
+  const deactivate = useCallback(async (id: string) => {
+    const result = await staffService.deactivate(id);
+    if (result) await refresh();
     return result;
   }, [refresh]);
 
@@ -103,6 +116,6 @@ export function useStaff() {
     remove,
     activate,
     deactivate,
-    activeCount: staffService.getActiveCount(),
+    activeCount,
   };
 }

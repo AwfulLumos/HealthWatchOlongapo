@@ -78,7 +78,11 @@ interface User {
   lastLogin?: string;
 }
 
-type UserRole = 'Admin' | 'Doctor' | 'Nurse' | 'Midwife' | 'BHW';
+// User roles control system access (login accounts)
+type UserRole = 'Admin' | 'Employee';
+
+// Staff roles represent healthcare provider types (personnel records)
+type StaffRole = 'Doctor' | 'Nurse' | 'Midwife' | 'BHW';
 ```
 
 ## Patient Service
