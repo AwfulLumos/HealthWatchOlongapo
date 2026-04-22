@@ -1185,7 +1185,7 @@ export function ConsultationsPage() {
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">
         <div>
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Consultations</h1>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Consultation and Treatment Logging</h1>
           <p className="text-xs sm:text-sm text-gray-500">Log and manage patient consultations</p>
         </div>
         <button
