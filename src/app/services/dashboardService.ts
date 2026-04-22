@@ -28,8 +28,13 @@ export const dashboardService = {
   },
 
   async getMonthlyPatients() {
-    // Can be implemented if backend provides this endpoint
-    return [];
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/patients-by-month');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch monthly patient trend:', error);
+      return [];
+    }
   },
 
   async getDiagnosisBreakdown() {

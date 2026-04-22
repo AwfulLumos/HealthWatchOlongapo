@@ -52,7 +52,11 @@ export function DashboardPage() {
           ]);
         }
         
-        setConsultationsChartData(consultationChart || []);
+        const normalizedConsultations = (consultationChart || []).map((item: any) => ({
+          day: item.day || item.month || "",
+          consultations: Number(item.consultations ?? item.count ?? 0),
+        }));
+        setConsultationsChartData(normalizedConsultations);
         
         // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
         const coloredDiagnosis = (diagnosisBreakdown || []).map((item: any, index: number) => ({
@@ -81,7 +85,12 @@ export function DashboardPage() {
         }));
         setUpcomingAppointments(transformedAppts);
         
-        setMonthlyPatientData([]);
+        const monthlyPatients = await dashboardService.getMonthlyPatients();
+        const normalizedMonthlyPatients = (monthlyPatients || []).map((item: any) => ({
+          month: item.month || "",
+          patients: Number(item.patients ?? item.count ?? 0),
+        }));
+        setMonthlyPatientData(normalizedMonthlyPatients);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {

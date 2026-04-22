@@ -42,6 +42,16 @@ export class DashboardController {
     }
   }
 
+  async getPatientsByMonth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const months = req.query.months ? parseInt(req.query.months as string) : 6;
+      const data = await dashboardService.getPatientsByMonth(months);
+      sendSuccess(res, data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getTopDiagnoses(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;

@@ -49,7 +49,7 @@ export interface ConsultationCreationOptions {
 }
 
 export const consultationService = {
-  async getAll(params?: { patientId?: string; staffId?: string; status?: string; type?: string; startDate?: string; endDate?: string }): Promise<Consultation[]> {
+  async getAll(params?: { page?: number; limit?: number; patientId?: string; staffId?: string; status?: string; type?: string; startDate?: string; endDate?: string }): Promise<Consultation[]> {
     try {
       const response = await apiClient.get<ApiResponse<Consultation[]>>('/api/v1/consultations', { params });
       return response.data.data || [];

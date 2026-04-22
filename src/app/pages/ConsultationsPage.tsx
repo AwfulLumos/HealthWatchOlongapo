@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit2, X, Activity, Thermometer, Heart } from "lucide-react";
+import { Search, Plus, Eye, Edit2, X, Activity, Thermometer, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   consultationService,
   type ConsultationCreateInput,
@@ -26,6 +26,9 @@ const statusColor = {
   "In Progress": "text-orange-600 bg-orange-50 border-orange-200",
   Pending: "text-orange-600 bg-orange-50 border-orange-200"
 };
+const CONSULTATION_QUERY_LIMIT = 100;
+const CONSULTATION_MAX_PAGES = 20;
+const CONSULTATION_PAGE_SIZE = 10;
 
 type MedicationDraft = {
   id?: string;
@@ -931,6 +934,7 @@ function ConsultationModal({
 export function ConsultationsPage() {
   const user = authService.getCurrentUser();
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ mode: ConsultationModalMode; consultation?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [consultations, setConsultations] = useState<any[]>([]);
@@ -945,8 +949,22 @@ export function ConsultationsPage() {
   const fetchConsultations = async () => {
     setIsLoading(true);
     try {
-      const data = await consultationService.getAll();
-      setConsultations(data.map(transformConsultation));
+      const all: any[] = [];
+
+      for (let page = 1; page <= CONSULTATION_MAX_PAGES; page++) {
+        const chunk = await consultationService.getAll({
+          page,
+          limit: CONSULTATION_QUERY_LIMIT,
+        });
+
+        all.push(...chunk);
+
+        if (chunk.length < CONSULTATION_QUERY_LIMIT) {
+          break;
+        }
+      }
+
+      setConsultations(all.map(transformConsultation));
     } finally {
       setIsLoading(false);
     }
@@ -1177,6 +1195,16 @@ export function ConsultationsPage() {
     `${c.patient} ${c.id} ${c.diagnosis}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CONSULTATION_PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * CONSULTATION_PAGE_SIZE;
+  const pageEnd = pageStart + CONSULTATION_PAGE_SIZE;
+  const paginated = filtered.slice(pageStart, pageEnd);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   if (isLoading) {
     return <ConsultationsSkeleton />;
   }
@@ -1232,8 +1260,12 @@ export function ConsultationsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c, i) => (
-                <tr key={c.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
+              {paginated.map((c, i) => (
+                <tr
+                  key={c.id}
+                  className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                  onClick={() => setModal({ mode: "view", consultation: c })}
+                >
                   <td className="px-4 py-3">
                     <span className="text-blue-600 text-sm font-semibold" title={c.id}>{formatEntityId(c.id, "CON")}</span>
                   </td>
@@ -1260,10 +1292,10 @@ export function ConsultationsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => setModal({ mode: "view", consultation: c })} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "view", consultation: c }); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleOpenEditConsultation(c)} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); handleOpenEditConsultation(c); }} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
                         <Edit2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -1277,7 +1309,7 @@ export function ConsultationsPage() {
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-3">
-        {filtered.map((c) => (
+        {paginated.map((c) => (
           <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -1318,6 +1350,35 @@ export function ConsultationsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50">
+        <p className="text-gray-400 text-xs sm:text-sm">Showing {paginated.length} of {filtered.length} consultations</p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={safeCurrentPage === 1}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+            <button
+              key={n}
+              onClick={() => setCurrentPage(n)}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-200 text-xs sm:text-sm ${n === safeCurrentPage ? "bg-blue-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-100"}`}
+            >
+              {n}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={safeCurrentPage === totalPages}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {modal && (

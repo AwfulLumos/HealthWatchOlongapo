@@ -13,6 +13,8 @@ type PatientModalMode = "view" | "add" | "edit";
 const BLOOD_TYPES = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 const GENDERS = ["", "Male", "Female"] as const;
 const CIVIL_STATUSES = ["", "Single", "Married", "Widowed", "Divorced", "Separated"] as const;
+const PATIENT_QUERY_LIMIT = 100;
+const PATIENT_MAX_PAGES = 20;
 
 function formatApiError(err: unknown): string {
   const anyErr = err as any;
@@ -370,16 +372,28 @@ function PatientModal(
 
 export function PatientsPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; patient?: Patient } | null>(null);
   const [successModal, setSuccessModal] = useState<{ title: string; message?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const pageSize = 10;
 
   useEffect(() => {
     const fetchPatients = async () => {
       setIsLoading(true);
-      const data = await patientService.getAll();
-      setPatients(data.map((p: any) => normalizePatientApi(p)));
+      const all: any[] = [];
+
+      for (let page = 1; page <= PATIENT_MAX_PAGES; page++) {
+        const chunk = await patientService.getAll({ page, limit: PATIENT_QUERY_LIMIT });
+        all.push(...chunk);
+
+        if (chunk.length < PATIENT_QUERY_LIMIT) {
+          break;
+        }
+      }
+
+      setPatients(all.map((p: any) => normalizePatientApi(p)));
       setIsLoading(false);
     };
     fetchPatients();
@@ -446,6 +460,16 @@ export function PatientsPage() {
   const filtered = patients.filter(p =>
     `${p.firstName} ${p.lastName} ${p.id} ${p.barangay}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * pageSize;
+  const pageEnd = pageStart + pageSize;
+  const paginated = filtered.slice(pageStart, pageEnd);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   if (isLoading) {
     return <PatientsSkeleton />;
@@ -520,10 +544,11 @@ export function PatientsPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((p, i) => (
+                paginated.map((p, i) => (
                   <tr 
                     key={p.id} 
                     className={`border-b border-gray-50 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                    onClick={() => setModal({ mode: "view", patient: p })}
                   >
                     <td className="px-4 py-3">
                       <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold" title={p.id}>{formatEntityId(p.id, "PAT")}</span>
@@ -550,10 +575,10 @@ export function PatientsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setModal({ mode: "view", patient: p })} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110">
+                        <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "view", patient: p }); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setModal({ mode: "edit", patient: p })} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200 hover:scale-110">
+                        <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "edit", patient: p }); }} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200 hover:scale-110">
                           <Edit2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -572,7 +597,7 @@ export function PatientsPage() {
               No patients found. {patients.length === 0 ? "Click 'Register Patient' to add a new patient." : "Try adjusting your search."}
             </div>
           ) : (
-            filtered.map((p) => (
+            paginated.map((p) => (
             <div key={p.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-all">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -621,17 +646,29 @@ export function PatientsPage() {
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-          <p className="text-gray-400 text-xs sm:text-sm">Showing {filtered.length} of {patients.length} patients</p>
+          <p className="text-gray-400 text-xs sm:text-sm">Showing {paginated.length} of {filtered.length} patients</p>
           <div className="flex items-center gap-1">
-            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            {[1, 2, 3].map(n => (
-              <button key={n} className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-200 text-xs sm:text-sm ${n === 1 ? "bg-blue-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-100"}`}>
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+              <button
+                key={n}
+                onClick={() => setCurrentPage(n)}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-200 text-xs sm:text-sm ${n === safeCurrentPage ? "bg-blue-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-100"}`}
+              >
                 {n}
               </button>
             ))}
-            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
