@@ -5,6 +5,33 @@ import { vitalSignsService } from "../services/vitalSignsService";
 import { VitalSignsSkeleton } from "../components/skeletons/VitalSignsSkeleton";
 import { formatEntityId } from "../utils";
 
+type VitalApiRow = {
+  id: string;
+  consultId?: string;
+  patient?: string | { id?: string; firstName?: string; lastName?: string };
+  patientId?: string;
+  date: string;
+  bpSystolic: number;
+  bpDiastolic: number;
+  pulseRate: number;
+  respRate: number;
+  temp: number;
+  bloodSugar: number;
+  weight: number;
+  height: number;
+  bmi: number;
+};
+
+type VitalRow = Omit<VitalApiRow, "patient"> & {
+  patient: string;
+};
+
+type TrendPoint = {
+  date: string;
+  systolic: number;
+  diastolic: number;
+};
+
 function getBPStatus(systolic: number, diastolic: number) {
   if (systolic >= 140 || diastolic >= 90) return { label: "High", color: "text-red-600", bg: "bg-red-100" };
   if (systolic >= 130 || diastolic >= 80) return { label: "Elevated", color: "text-orange-600", bg: "bg-orange-100" };
@@ -21,25 +48,23 @@ export function VitalSignsPage() {
   const [search, setSearch] = useState("");
   const [showTrend, setShowTrend] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [vitals, setVitals] = useState<any[]>([]);
-  const [bpTrendData, setBpTrendData] = useState<any[]>([]);
+  const [vitals, setVitals] = useState<VitalRow[]>([]);
+  const [bpTrendData, setBpTrendData] = useState<TrendPoint[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
+  const [selectedPatientName, setSelectedPatientName] = useState<string>("");
 
   useEffect(() => {
     const fetchVitals = async () => {
       setIsLoading(true);
       const data = await vitalSignsService.getAll();
-      // Transform nested patient object to flat string
-      const transformed = data.map((v: any) => ({
+      const transformed: VitalRow[] = data.map((v: VitalApiRow) => ({
         ...v,
-        patient: typeof v.patient === 'object' 
-          ? `${v.patient?.firstName || ''} ${v.patient?.lastName || ''}`.trim() 
+        patient: typeof v.patient === "object"
+          ? `${v.patient?.firstName || ""} ${v.patient?.lastName || ""}`.trim()
           : v.patient || "Unknown",
+        patientId: v.patientId || (typeof v.patient === "object" ? v.patient?.id : ""),
       }));
       setVitals(transformed);
-      // You can fetch trend data for a specific patient if available
-      // const trend = await vitalSignsService.getTrend(patientId);
-      // setBpTrendData(trend);
-      setBpTrendData([]); // Empty for now
       setIsLoading(false);
     };
     fetchVitals();
@@ -48,6 +73,44 @@ export function VitalSignsPage() {
   const filtered = vitals.filter(v =>
     `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  const hasSelectablePatients = filtered.some(v => !!v.patientId);
+
+  useEffect(() => {
+    if (!filtered.length) {
+      setSelectedPatientId("");
+      setSelectedPatientName("");
+      return;
+    }
+
+    const hasSelectedInFiltered = filtered.some(v => v.patientId === selectedPatientId);
+    if (!selectedPatientId || !hasSelectedInFiltered) {
+      const firstWithPatient = filtered.find(v => v.patientId);
+      if (firstWithPatient?.patientId) {
+        setSelectedPatientId(firstWithPatient.patientId);
+        setSelectedPatientName(firstWithPatient.patient as string);
+      }
+    }
+  }, [filtered, selectedPatientId]);
+
+  useEffect(() => {
+    const fetchTrend = async () => {
+      if (!selectedPatientId) {
+        setBpTrendData([]);
+        return;
+      }
+
+      const trend = await vitalSignsService.getBPTrend(selectedPatientId);
+      setBpTrendData(trend);
+    };
+
+    fetchTrend();
+  }, [selectedPatientId]);
+
+  const trendDateRange =
+    bpTrendData.length > 0
+      ? `${new Date(bpTrendData[0].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} - ${new Date(bpTrendData[bpTrendData.length - 1].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+      : "No trend data available";
 
   if (isLoading) {
     return <VitalSignsSkeleton />;
@@ -61,8 +124,9 @@ export function VitalSignsPage() {
           <p className="text-xs sm:text-sm text-gray-500">Monitor and track patient vital signs</p>
         </div>
         <button
+          disabled={!hasSelectablePatients}
           onClick={() => setShowTrend(!showTrend)}
-          className="flex items-center justify-center gap-2 border border-blue-300 text-blue-600 hover:bg-blue-50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+          className={`flex items-center justify-center gap-2 border px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold ${hasSelectablePatients ? "border-blue-300 text-blue-600 hover:bg-blue-50" : "border-gray-200 text-gray-400 cursor-not-allowed"}`}
         >
           <TrendingUp className="w-4 h-4" /> {showTrend ? "Hide" : "Show"} Trend
         </button>
@@ -70,19 +134,28 @@ export function VitalSignsPage() {
 
       {showTrend && (
         <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
-          <h3 className="text-gray-800 mb-1 text-sm sm:text-base font-semibold">Maria Santos — Blood Pressure Trend</h3>
-          <p className="text-gray-400 mb-3 sm:mb-4 text-xs sm:text-sm">Jan 2026 – Mar 2026</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={bpTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} />
-              <YAxis style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} domain={[60, 180]} width={30} />
-              <Tooltip />
-              <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
-              <Line type="monotone" dataKey="systolic" stroke="#EF4444" strokeWidth={2} name="Systolic" dot={{ fill: "#EF4444" }} />
-              <Line type="monotone" dataKey="diastolic" stroke="#3B82F6" strokeWidth={2} name="Diastolic" dot={{ fill: "#3B82F6" }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {!hasSelectablePatients ? (
+            <div className="h-[180px] flex flex-col items-center justify-center text-center px-4">
+              <h3 className="text-gray-800 text-sm sm:text-base font-semibold mb-1">Select a patient to view trend</h3>
+              <p className="text-gray-500 text-xs sm:text-sm">No patient records match your current search. Clear or adjust the search to view trend data.</p>
+            </div>
+          ) : (
+            <>
+              <h3 className="text-gray-800 mb-1 text-sm sm:text-base font-semibold">{selectedPatientName || "No Patient Selected"} - Blood Pressure Trend</h3>
+              <p className="text-gray-400 mb-3 sm:mb-4 text-xs sm:text-sm">{trendDateRange}</p>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={bpTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} />
+                  <YAxis style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} domain={[60, 180]} width={30} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
+                  <Line type="monotone" dataKey="systolic" stroke="#EF4444" strokeWidth={2} name="Systolic" dot={{ fill: "#EF4444" }} />
+                  <Line type="monotone" dataKey="diastolic" stroke="#3B82F6" strokeWidth={2} name="Diastolic" dot={{ fill: "#3B82F6" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
+          )}
         </div>
       )}
 
@@ -140,7 +213,17 @@ export function VitalSignsPage() {
                 const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
                 const bs = getBSStatus(v.bloodSugar);
                 return (
-                  <tr key={v.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
+                  <tr
+                    key={v.id}
+                    onClick={() => {
+                      if (v.patientId) {
+                        setSelectedPatientId(v.patientId);
+                        setSelectedPatientName(v.patient as string);
+                        setShowTrend(true);
+                      }
+                    }}
+                    className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/30"} ${selectedPatientId === v.patientId ? "bg-blue-50" : ""}`}
+                  >
                     <td className="px-4 py-3">
                       <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
                       <p className="text-gray-400 text-[0.65rem]" title={v.consultId}>{formatEntityId(v.consultId, "CON")}</p>
@@ -181,7 +264,17 @@ export function VitalSignsPage() {
           const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
           const bs = getBSStatus(v.bloodSugar);
           return (
-            <div key={v.id} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div
+              key={v.id}
+              onClick={() => {
+                if (v.patientId) {
+                  setSelectedPatientId(v.patientId);
+                  setSelectedPatientName(v.patient as string);
+                  setShowTrend(true);
+                }
+              }}
+              className={`bg-white rounded-xl border border-gray-200 p-4 cursor-pointer ${selectedPatientId === v.patientId ? "ring-2 ring-blue-200" : ""}`}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
