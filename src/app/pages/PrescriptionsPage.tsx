@@ -87,6 +87,7 @@ export function PrescriptionsPage() {
   useEffect(() => {
     const fetchPrescriptions = async () => {
       setIsLoading(true);
+      console.log("[Prescriptions] Fetching list");
       const data = await prescriptionService.getAll();
 
       const transformed = data.map((rx: any) => ({
@@ -105,6 +106,10 @@ export function PrescriptionsPage() {
       }));
 
       setPrescriptions(transformed);
+      console.log("[Prescriptions] List loaded", {
+        count: transformed.length,
+        consultations: new Set(transformed.map((rx) => rx.consultId)).size,
+      });
       setIsLoading(false);
     };
 

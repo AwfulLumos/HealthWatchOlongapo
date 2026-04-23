@@ -382,18 +382,29 @@ export function PatientsPage() {
   useEffect(() => {
     const fetchPatients = async () => {
       setIsLoading(true);
+      console.log("[Patients] Fetching paged data", {
+        maxPages: PATIENT_MAX_PAGES,
+        pageLimit: PATIENT_QUERY_LIMIT,
+      });
       const all: any[] = [];
 
       for (let page = 1; page <= PATIENT_MAX_PAGES; page++) {
         const chunk = await patientService.getAll({ page, limit: PATIENT_QUERY_LIMIT });
         all.push(...chunk);
+        console.log("[Patients] Page fetched", {
+          page,
+          pageCount: chunk.length,
+          accumulated: all.length,
+        });
 
         if (chunk.length < PATIENT_QUERY_LIMIT) {
           break;
         }
       }
 
-      setPatients(all.map((p: any) => normalizePatientApi(p)));
+      const normalized = all.map((p: any) => normalizePatientApi(p));
+      setPatients(normalized);
+      console.log("[Patients] List loaded", { count: normalized.length });
       setIsLoading(false);
     };
     fetchPatients();
@@ -401,6 +412,11 @@ export function PatientsPage() {
 
   const handleSavePatient = async (mode: PatientModalMode, form: Patient): Promise<boolean> => {
     if (mode === 'add') {
+      console.log("[Patients] Save requested", {
+        mode,
+        firstName: form.firstName,
+        lastName: form.lastName,
+      });
       const created = await patientService.create({
         firstName: form.firstName,
         lastName: form.lastName,
@@ -418,6 +434,7 @@ export function PatientsPage() {
       } as any);
 
       const normalized = normalizePatientApi(created as any);
+      console.log("[Patients] Create response", normalized);
       setPatients((prev) => [normalized, ...prev]);
       const createdLabel = `${normalized.firstName} ${normalized.lastName}`.trim() || normalized.id || "Patient";
       setSuccessModal({
@@ -428,6 +445,10 @@ export function PatientsPage() {
     }
 
     if (mode === 'edit' && form.id) {
+      console.log("[Patients] Save requested", {
+        mode,
+        patientId: form.id,
+      });
       const updated = await patientService.update(form.id, {
         firstName: form.firstName,
         lastName: form.lastName,
@@ -445,6 +466,7 @@ export function PatientsPage() {
       } as any);
 
       const normalized = normalizePatientApi(updated as any);
+      console.log("[Patients] Update response", normalized);
       setPatients((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
       const updatedLabel = `${normalized.firstName} ${normalized.lastName}`.trim() || normalized.id || "Patient";
       setSuccessModal({

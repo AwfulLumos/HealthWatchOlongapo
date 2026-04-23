@@ -103,6 +103,7 @@ export function StaffPage() {
   useEffect(() => {
     const fetchStaff = async () => {
       setIsLoading(true);
+      console.log("[Staff] Fetching list");
       const data = await staffService.getAll();
       // Transform nested station object to flat string
       const transformed = data.map((s: any) => ({
@@ -111,6 +112,7 @@ export function StaffPage() {
         username: s.user?.username || s.username || "N/A",
       }));
       setStaff(transformed);
+      console.log("[Staff] List loaded", { count: transformed.length });
       setIsLoading(false);
     };
     fetchStaff();
