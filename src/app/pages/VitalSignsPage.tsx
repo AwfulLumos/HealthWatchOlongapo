@@ -56,6 +56,7 @@ export function VitalSignsPage() {
   useEffect(() => {
     const fetchVitals = async () => {
       setIsLoading(true);
+      console.log("[VitalSigns] Fetching list");
       const data = await vitalSignsService.getAll();
       const transformed: VitalRow[] = data.map((v: VitalApiRow) => ({
         ...v,
@@ -65,6 +66,7 @@ export function VitalSignsPage() {
         patientId: v.patientId || (typeof v.patient === "object" ? v.patient?.id : ""),
       }));
       setVitals(transformed);
+      console.log("[VitalSigns] List loaded", { count: transformed.length });
       setIsLoading(false);
     };
     fetchVitals();
@@ -100,8 +102,13 @@ export function VitalSignsPage() {
         return;
       }
 
+      console.log("[VitalSigns] Fetching BP trend", { patientId: selectedPatientId });
       const trend = await vitalSignsService.getBPTrend(selectedPatientId);
       setBpTrendData(trend);
+      console.log("[VitalSigns] BP trend loaded", {
+        patientId: selectedPatientId,
+        points: trend.length,
+      });
     };
 
     fetchTrend();

@@ -11,6 +11,8 @@ router.get('/upcoming-appointments', dashboardController.getUpcomingAppointments
 router.get('/recent-patients', dashboardController.getRecentPatients.bind(dashboardController));
 router.get('/consultations-by-month', dashboardController.getConsultationsByMonth.bind(dashboardController));
 router.get('/patients-by-month', dashboardController.getPatientsByMonth.bind(dashboardController));
+router.get('/patient-demographics', dashboardController.getPatientDemographics.bind(dashboardController));
 router.get('/top-diagnoses', dashboardController.getTopDiagnoses.bind(dashboardController));
+router.get('/disease-trend-analysis', dashboardController.getDiseaseTrendAnalysis.bind(dashboardController));
 
 export default router;
