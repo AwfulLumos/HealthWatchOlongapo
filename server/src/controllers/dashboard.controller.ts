@@ -52,10 +52,34 @@ export class DashboardController {
     }
   }
 
+  async getPatientDemographics(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = await dashboardService.getPatientDemographics();
+      sendSuccess(res, data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getTopDiagnoses(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
       const data = await dashboardService.getTopDiagnoses(limit);
+      sendSuccess(res, data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDiseaseTrendAnalysis(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const months = req.query.months ? parseInt(req.query.months as string) : 6;
+      const topDiseases = req.query.topDiseases ? parseInt(req.query.topDiseases as string) : 5;
+      const growthAlertThreshold = req.query.growthAlertThreshold
+        ? parseFloat(req.query.growthAlertThreshold as string)
+        : 0.3;
+
+      const data = await dashboardService.getDiseaseTrendAnalysis(months, topDiseases, growthAlertThreshold);
       sendSuccess(res, data);
     } catch (error) {
       next(error);
