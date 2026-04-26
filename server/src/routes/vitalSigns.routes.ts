@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { vitalSignsController } from '../controllers/vitalSigns.controller.js';
-import { validate, authenticate } from '../middlewares/index.js';
+import { validate, authenticate, authorize } from '../middlewares/index.js';
 import {
   createVitalSignsSchema,
   updateVitalSignsSchema,
@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, authorize('Employee'));
 
 router.get('/', vitalSignsController.findAll.bind(vitalSignsController));
 router.get('/patient/:patientId/latest', vitalSignsController.getLatestByPatient.bind(vitalSignsController));

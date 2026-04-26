@@ -12,23 +12,45 @@ import {
   Menu,
   X,
   Bell,
+  UserPlus,
   ChevronDown,
   ClipboardList,
+  ShieldCheck,
+  LockKeyhole,
+  FileClock,
 } from "lucide-react";
 import { LogoutScreen } from "./LogoutScreen";
 import { SessionTimeoutWarning } from "./SessionTimeoutWarning";
 import { useAuth, useSessionTimeout } from "../hooks";
+import type { UserRole } from "../models";
 import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/patients", label: "Patients", icon: Users },
-  { to: "/consultations", label: "Consultations", icon: Stethoscope },
-  { to: "/appointments", label: "Appointments", icon: Calendar },
-  { to: "/prescriptions", label: "Prescriptions", icon: Pill },
-  { to: "/vital-signs", label: "Vital Signs", icon: ClipboardList },
-  { to: "/staff", label: "Staff", icon: UserCog },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: UserRole[];
+}
+
+function getRoleLabel(role?: UserRole): string {
+  if (role === "Employee") return "Public Health Administrator";
+  if (role === "Admin") return "System Administrator";
+  return "System User";
+}
+
+const navItems: NavItem[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["Employee"] },
+  { to: "/patients", label: "Patients", icon: Users, roles: ["Employee"] },
+  { to: "/consultations", label: "Consultations", icon: Stethoscope, roles: ["Employee"] },
+  { to: "/appointments", label: "Appointments", icon: Calendar, roles: ["Employee"] },
+  { to: "/prescriptions", label: "Prescriptions", icon: Pill, roles: ["Employee"] },
+  { to: "/vital-signs", label: "Vital Signs", icon: ClipboardList, roles: ["Employee"] },
+  { to: "/staff", label: "Staff", icon: UserCog, roles: ["Admin", "Employee"] },
+  { to: "/register", label: "Register User", icon: UserPlus, roles: ["Admin"] },
+  { to: "/reports", label: "Reports", icon: BarChart3, roles: ["Employee"] },
+  { to: "/sysadmin/rbac", label: "RBAC", icon: ShieldCheck, roles: ["Admin"] },
+  { to: "/sysadmin/security", label: "Security", icon: LockKeyhole, roles: ["Admin"] },
+  { to: "/sysadmin/audit-trail", label: "Audit Trail", icon: FileClock, roles: ["Admin"] },
 ];
 
 export function Layout() {
@@ -39,6 +61,7 @@ export function Layout() {
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const visibleNavItems = navItems.filter((item) => !item.roles || (user ? item.roles.includes(user.role) : false));
 
   const handleLogout = useCallback(() => {
     setShowTimeoutWarning(false);
@@ -132,7 +155,7 @@ export function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 py-3 overflow-y-auto">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -224,7 +247,7 @@ export function Layout() {
                     {user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : "Admin"}
                   </p>
                   <p className="text-gray-400 text-[0.65rem] sm:text-xs">
-                    {user?.role || "System User"}
+                    {getRoleLabel(user?.role)}
                   </p>
                 </div>
                 <ChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
