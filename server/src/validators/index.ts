@@ -5,3 +5,4 @@ export * from './appointment.validator.js';
 export * from './consultation.validator.js';
 export * from './prescription.validator.js';
 export * from './vitalSigns.validator.js';
+export * from './sysadmin.validator.js';

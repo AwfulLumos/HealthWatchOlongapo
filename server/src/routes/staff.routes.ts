@@ -10,23 +10,27 @@ import {
 const router = Router();
 
 // All routes require authentication
-router.use(authenticate, authorize('Employee'));
+router.use(authenticate);
 
-router.get('/', staffController.findAll.bind(staffController));
-router.get('/:id', validate(staffIdParamSchema), staffController.findById.bind(staffController));
+// Staff directory is readable by both admin and employee roles.
+router.get('/', authorize('Admin', 'Employee'), staffController.findAll.bind(staffController));
+router.get('/:id', authorize('Admin', 'Employee'), validate(staffIdParamSchema), staffController.findById.bind(staffController));
 
 router.post(
   '/',
+  authorize('Admin'),
   validate(createStaffSchema),
   staffController.create.bind(staffController)
 );
 router.patch(
   '/:id',
+  authorize('Admin'),
   validate(updateStaffSchema),
   staffController.update.bind(staffController)
 );
 router.delete(
   '/:id',
+  authorize('Admin'),
   validate(staffIdParamSchema),
   staffController.delete.bind(staffController)
 );

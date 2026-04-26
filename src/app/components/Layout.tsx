@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Bell,
+  UserPlus,
   ChevronDown,
   ClipboardList,
   ShieldCheck,
@@ -31,6 +32,12 @@ interface NavItem {
   roles?: UserRole[];
 }
 
+function getRoleLabel(role?: UserRole): string {
+  if (role === "Employee") return "Public Health Administrator";
+  if (role === "Admin") return "System Administrator";
+  return "System User";
+}
+
 const navItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["Employee"] },
   { to: "/patients", label: "Patients", icon: Users, roles: ["Employee"] },
@@ -38,7 +45,8 @@ const navItems: NavItem[] = [
   { to: "/appointments", label: "Appointments", icon: Calendar, roles: ["Employee"] },
   { to: "/prescriptions", label: "Prescriptions", icon: Pill, roles: ["Employee"] },
   { to: "/vital-signs", label: "Vital Signs", icon: ClipboardList, roles: ["Employee"] },
-  { to: "/staff", label: "Staff", icon: UserCog, roles: ["Employee"] },
+  { to: "/staff", label: "Staff", icon: UserCog, roles: ["Admin", "Employee"] },
+  { to: "/register", label: "Register User", icon: UserPlus, roles: ["Admin"] },
   { to: "/reports", label: "Reports", icon: BarChart3, roles: ["Employee"] },
   { to: "/sysadmin/rbac", label: "RBAC", icon: ShieldCheck, roles: ["Admin"] },
   { to: "/sysadmin/security", label: "Security", icon: LockKeyhole, roles: ["Admin"] },
@@ -239,7 +247,7 @@ export function Layout() {
                     {user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : "Admin"}
                   </p>
                   <p className="text-gray-400 text-[0.65rem] sm:text-xs">
-                    {user?.role || "System User"}
+                    {getRoleLabel(user?.role)}
                   </p>
                 </div>
                 <ChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />

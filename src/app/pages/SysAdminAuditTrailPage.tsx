@@ -1,71 +1,8 @@
 import { useMemo, useState } from "react";
 import { FileClock, Search, Filter } from "lucide-react";
-
-type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "VIEW" | "EXPORT";
-
-interface AuditRecord {
-  id: string;
-  timestamp: string;
-  actor: string;
-  role: string;
-  action: AuditAction;
-  resource: string;
-  status: "Success" | "Blocked";
-  ipAddress: string;
-}
-
-const auditRecords: AuditRecord[] = [
-  {
-    id: "AUD-5001",
-    timestamp: "2026-04-26 08:14",
-    actor: "admin",
-    role: "System Administrator",
-    action: "UPDATE",
-    resource: "Role Permission Policy",
-    status: "Success",
-    ipAddress: "10.0.2.12",
-  },
-  {
-    id: "AUD-5002",
-    timestamp: "2026-04-26 08:48",
-    actor: "nurse.cruz",
-    role: "Health Worker",
-    action: "VIEW",
-    resource: "Patient Record: P-10014",
-    status: "Success",
-    ipAddress: "10.0.3.44",
-  },
-  {
-    id: "AUD-5003",
-    timestamp: "2026-04-26 09:02",
-    actor: "city.health.admin",
-    role: "Public Health Admin",
-    action: "EXPORT",
-    resource: "Monthly Morbidity Report",
-    status: "Blocked",
-    ipAddress: "10.0.4.21",
-  },
-  {
-    id: "AUD-5004",
-    timestamp: "2026-04-26 09:16",
-    actor: "admin",
-    role: "System Administrator",
-    action: "CREATE",
-    resource: "Staff Account: bhw.perez",
-    status: "Success",
-    ipAddress: "10.0.2.12",
-  },
-  {
-    id: "AUD-5005",
-    timestamp: "2026-04-26 09:44",
-    actor: "admin",
-    role: "System Administrator",
-    action: "DELETE",
-    resource: "Expired API Token",
-    status: "Success",
-    ipAddress: "10.0.2.12",
-  },
-];
+import { useEffect } from "react";
+import type { AuditAction, AuditRecord } from "../models";
+import { sysAdminService } from "../services/sysadminService";
 
 const actionColor: Record<AuditAction, string> = {
   CREATE: "bg-emerald-100 text-emerald-700",
@@ -76,21 +13,36 @@ const actionColor: Record<AuditAction, string> = {
 };
 
 export function SysAdminAuditTrailPage() {
+  const [records, setRecords] = useState<AuditRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [actionFilter, setActionFilter] = useState<AuditAction | "ALL">("ALL");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadAuditTrail = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await sysAdminService.getAuditTrail({
+          search: searchTerm || undefined,
+          action: actionFilter,
+        });
+        setRecords(data);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load audit trail.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const timer = setTimeout(loadAuditTrail, 200);
+    return () => clearTimeout(timer);
+  }, [searchTerm, actionFilter]);
 
   const filteredRecords = useMemo(() => {
-    return auditRecords.filter((record) => {
-      const matchesSearch =
-        record.actor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesAction = actionFilter === "ALL" ? true : record.action === actionFilter;
-
-      return matchesSearch && matchesAction;
-    });
-  }, [searchTerm, actionFilter]);
+    return records;
+  }, [records]);
 
   const blockedEvents = filteredRecords.filter((record) => record.status === "Blocked").length;
 
@@ -100,6 +52,12 @@ export function SysAdminAuditTrailPage() {
         <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">System Admin - Audit Trail</h1>
         <p className="text-xs sm:text-sm text-gray-500">Track access, data updates, and policy-related activities</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs sm:text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {[
@@ -159,7 +117,12 @@ export function SysAdminAuditTrailPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map((record) => (
+              {isLoading && (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center text-sm text-gray-400">Loading audit trail...</td>
+                </tr>
+              )}
+              {!isLoading && filteredRecords.map((record) => (
                 <tr key={record.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 text-sm text-gray-700">{record.id}</td>
                   <td className="py-2 text-sm text-gray-600">{record.timestamp}</td>
@@ -187,7 +150,7 @@ export function SysAdminAuditTrailPage() {
           </table>
         </div>
 
-        {filteredRecords.length === 0 && (
+        {!isLoading && filteredRecords.length === 0 && (
           <div className="text-center py-8 text-gray-400">
             <FileClock className="w-6 h-6 mx-auto mb-2" />
             <p className="text-sm">No audit records found for your current filters.</p>

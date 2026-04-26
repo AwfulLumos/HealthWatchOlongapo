@@ -9,6 +9,7 @@ import prescriptionRoutes from './prescription.routes.js';
 import vitalSignsRoutes from './vitalSigns.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import barangayRoutes from './barangay.routes.js';
+import sysAdminRoutes from './sysadmin.routes.js';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use('/prescriptions', prescriptionRoutes);
 router.use('/vital-signs', vitalSignsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/barangays', barangayRoutes);
+router.use('/sysadmin', sysAdminRoutes);
 
 export default router;

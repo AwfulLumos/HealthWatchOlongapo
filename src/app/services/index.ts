@@ -9,3 +9,4 @@ export { staffService } from './staffService';
 
 export { authService } from './authService';
 export { dashboardService } from './dashboardService';
+export { sysAdminService } from './sysadminService';

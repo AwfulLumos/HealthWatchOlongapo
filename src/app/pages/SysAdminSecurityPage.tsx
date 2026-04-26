@@ -1,65 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LockKeyhole, Shield, KeyRound, AlertTriangle, RefreshCw } from "lucide-react";
-
-interface SecurityControl {
-  id: string;
-  title: string;
-  description: string;
-  category: "Encryption" | "Access" | "Session" | "Policy";
-  enabled: boolean;
-}
-
-const initialControls: SecurityControl[] = [
-  {
-    id: "enc-at-rest",
-    title: "Encrypt Data At Rest",
-    description: "Protect health records in storage with strong encryption.",
-    category: "Encryption",
-    enabled: true,
-  },
-  {
-    id: "enc-in-transit",
-    title: "TLS For API Traffic",
-    description: "Require secure transport for all client-server communication.",
-    category: "Encryption",
-    enabled: true,
-  },
-  {
-    id: "mfa-admin",
-    title: "MFA For Admin Accounts",
-    description: "Require multi-factor authentication for privileged users.",
-    category: "Access",
-    enabled: true,
-  },
-  {
-    id: "session-timeout",
-    title: "Session Auto Timeout",
-    description: "Terminate idle sessions to reduce unauthorized access risk.",
-    category: "Session",
-    enabled: true,
-  },
-  {
-    id: "password-policy",
-    title: "Strong Password Policy",
-    description: "Enforce minimum length and complexity requirements.",
-    category: "Policy",
-    enabled: true,
-  },
-  {
-    id: "download-safeguard",
-    title: "Sensitive Export Confirmation",
-    description: "Require an extra confirmation before data export.",
-    category: "Access",
-    enabled: false,
-  },
-];
-
-const securityEvents = [
-  { id: "SEC-1108", event: "Failed admin login attempts", severity: "Medium", at: "2026-04-26 08:15" },
-  { id: "SEC-1109", event: "Role policy updated", severity: "Low", at: "2026-04-26 09:02" },
-  { id: "SEC-1110", event: "Sensitive report export", severity: "High", at: "2026-04-26 09:34" },
-  { id: "SEC-1111", event: "Password reset for staff account", severity: "Medium", at: "2026-04-26 10:18" },
-];
+import type { SecurityControl, SecurityEvent } from "../models";
+import { sysAdminService } from "../services/sysadminService";
 
 const severityColor: Record<string, string> = {
   Low: "bg-blue-100 text-blue-700",
@@ -68,18 +10,59 @@ const severityColor: Record<string, string> = {
 };
 
 export function SysAdminSecurityPage() {
-  const [controls, setControls] = useState(initialControls);
+  const [controls, setControls] = useState<SecurityControl[]>([]);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastAppliedAt, setLastAppliedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadSecurityConfiguration = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await sysAdminService.getSecurityConfiguration();
+        setControls(data.controls);
+        setSecurityEvents(data.events);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load security configuration.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSecurityConfiguration();
+  }, []);
 
   const toggleControl = (id: string) => {
     setControls((prev) => prev.map((control) => (control.id === id ? { ...control, enabled: !control.enabled } : control)));
   };
 
-  const applyConfiguration = () => {
-    setLastAppliedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  const applyConfiguration = async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      const data = await sysAdminService.updateSecurityControls(controls);
+      setControls(data.controls);
+      setSecurityEvents(data.events);
+      setLastAppliedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    } catch (err: any) {
+      setError(err?.message || "Failed to save security configuration.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const enabledCount = controls.filter((control) => control.enabled).length;
+
+  if (isLoading) {
+    return (
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 text-sm text-gray-500">Loading security configuration...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
@@ -90,11 +73,18 @@ export function SysAdminSecurityPage() {
         </div>
         <button
           onClick={applyConfiguration}
+          disabled={isSaving}
           className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors"
         >
-          <RefreshCw className="w-4 h-4" /> Apply Security Configuration
+          <RefreshCw className="w-4 h-4" /> {isSaving ? "Applying..." : "Apply Security Configuration"}
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs sm:text-sm">
+          {error}
+        </div>
+      )}
 
       {lastAppliedAt && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2 rounded-lg text-xs sm:text-sm">
