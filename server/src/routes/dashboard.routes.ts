@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { dashboardController } from '../controllers/dashboard.controller.js';
-import { authenticate } from '../middlewares/index.js';
+import { authenticate, authorize } from '../middlewares/index.js';
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, authorize('Employee'));
 
 router.get('/stats', dashboardController.getStats.bind(dashboardController));
 router.get('/upcoming-appointments', dashboardController.getUpcomingAppointments.bind(dashboardController));

@@ -10,27 +10,23 @@ import {
 const router = Router();
 
 // All routes require authentication
-router.use(authenticate);
+router.use(authenticate, authorize('Employee'));
 
 router.get('/', staffController.findAll.bind(staffController));
 router.get('/:id', validate(staffIdParamSchema), staffController.findById.bind(staffController));
 
-// Admin only routes
 router.post(
   '/',
-  authorize('Admin'),
   validate(createStaffSchema),
   staffController.create.bind(staffController)
 );
 router.patch(
   '/:id',
-  authorize('Admin'),
   validate(updateStaffSchema),
   staffController.update.bind(staffController)
 );
 router.delete(
   '/:id',
-  authorize('Admin'),
   validate(staffIdParamSchema),
   staffController.delete.bind(staffController)
 );
