@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Search, Plus, Eye, Edit2, X, UserPlus } from "lucide-react";
+import { useAuth } from "../hooks";
 import { staffService } from "../services/staffService";
 import { StaffSkeleton } from "../components/skeletons/StaffSkeleton";
 import { formatEntityId } from "../utils";
@@ -95,6 +96,8 @@ function StaffModal({ staff, onClose, mode }: { staff?: any; onClose: () => void
 
 export function StaffPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "Admin";
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; staff?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,6 +106,7 @@ export function StaffPage() {
   useEffect(() => {
     const fetchStaff = async () => {
       setIsLoading(true);
+      console.log("[Staff] Fetching list");
       const data = await staffService.getAll();
       // Transform nested station object to flat string
       const transformed = data.map((s: any) => ({
@@ -111,6 +115,7 @@ export function StaffPage() {
         username: s.user?.username || s.username || "N/A",
       }));
       setStaff(transformed);
+      console.log("[Staff] List loaded", { count: transformed.length });
       setIsLoading(false);
     };
     fetchStaff();
@@ -129,23 +134,33 @@ export function StaffPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">
         <div>
           <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-xs sm:text-sm text-gray-500">Manage health center staff and accounts</p>
+          <p className="text-xs sm:text-sm text-gray-500">
+            {isAdmin ? "Manage health center staff and accounts" : "View staff directory across health stations"}
+          </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => navigate('/register')}
-            className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
-          >
-            <UserPlus className="w-4 h-4" /> Register User
-          </button>
-          <button
-            onClick={() => setModal({ mode: "add" })}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
-          >
-            <Plus className="w-4 h-4" /> Add Staff
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => navigate('/register')}
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+            >
+              <UserPlus className="w-4 h-4" /> Register User
+            </button>
+            <button
+              onClick={() => setModal({ mode: "add" })}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+            >
+              <Plus className="w-4 h-4" /> Add Staff
+            </button>
+          </div>
+        )}
       </div>
+
+      {!isAdmin && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-blue-700">
+          Read-only access: only System Administrators can create, update, or register staff accounts.
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
@@ -208,16 +223,18 @@ export function StaffPage() {
             <div className="flex gap-2 border-t border-gray-50 pt-2 sm:pt-3">
               <button
                 onClick={() => setModal({ mode: "view", staff: s })}
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-colors text-[0.65rem] sm:text-xs"
+                className={`flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-colors text-[0.65rem] sm:text-xs ${isAdmin ? "flex-1" : "w-full"}`}
               >
                 <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> View
               </button>
-              <button
-                onClick={() => setModal({ mode: "edit", staff: s })}
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 border border-gray-200 text-gray-500 hover:text-teal-600 hover:border-teal-300 rounded-lg transition-colors text-[0.65rem] sm:text-xs"
-              >
-                <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Edit
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setModal({ mode: "edit", staff: s })}
+                  className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 border border-gray-200 text-gray-500 hover:text-teal-600 hover:border-teal-300 rounded-lg transition-colors text-[0.65rem] sm:text-xs"
+                >
+                  <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Edit
+                </button>
+              )}
             </div>
           </div>
         ))}

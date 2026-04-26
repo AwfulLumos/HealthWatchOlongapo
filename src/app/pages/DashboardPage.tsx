@@ -52,7 +52,11 @@ export function DashboardPage() {
           ]);
         }
         
-        setConsultationsChartData(consultationChart || []);
+        const normalizedConsultations = (consultationChart || []).map((item: any) => ({
+          day: item.day || item.month || "",
+          consultations: Number(item.consultations ?? item.count ?? 0),
+        }));
+        setConsultationsChartData(normalizedConsultations);
         
         // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
         const coloredDiagnosis = (diagnosisBreakdown || []).map((item: any, index: number) => ({
@@ -81,7 +85,12 @@ export function DashboardPage() {
         }));
         setUpcomingAppointments(transformedAppts);
         
-        setMonthlyPatientData([]);
+        const monthlyPatients = await dashboardService.getMonthlyPatients();
+        const normalizedMonthlyPatients = (monthlyPatients || []).map((item: any) => ({
+          month: item.month || "",
+          patients: Number(item.patients ?? item.count ?? 0),
+        }));
+        setMonthlyPatientData(normalizedMonthlyPatients);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -257,7 +266,7 @@ export function DashboardPage() {
         {/* Upcoming Appointments */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 lg:p-5 shadow-card hover:shadow-card-hover transition-all duration-300">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-gray-800 font-semibold text-sm sm:text-base">Today's Appointments</h3>
+            <h3 className="text-gray-800 font-semibold text-sm sm:text-base">Upcoming Appointments</h3>
             <a href="/appointments" className="text-blue-600 hover:text-blue-700 hover:underline transition-colors text-xs sm:text-sm">View all</a>
           </div>
           <div className="space-y-2 sm:space-y-3">

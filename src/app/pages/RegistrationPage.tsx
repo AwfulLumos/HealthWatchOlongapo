@@ -277,8 +277,8 @@ export function RegistrationPage() {
                     onChange={(e) => setRole(e.target.value as 'Admin' | 'Employee')}
                     className="w-full pl-9 pr-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm appearance-none cursor-pointer"
                   >
-                    <option value="Employee">Employee</option>
-                    <option value="Admin">Admin</option>
+                    <option value="Employee">Public Health Administrator</option>
+                    <option value="Admin">System Administrator</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

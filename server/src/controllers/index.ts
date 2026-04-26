@@ -6,3 +6,4 @@ export { consultationController } from './consultation.controller.js';
 export { prescriptionController } from './prescription.controller.js';
 export { vitalSignsController } from './vitalSigns.controller.js';
 export { dashboardController } from './dashboard.controller.js';
+export { sysAdminController } from './sysadmin.controller.js';

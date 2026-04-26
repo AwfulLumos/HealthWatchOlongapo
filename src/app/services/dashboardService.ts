@@ -28,8 +28,13 @@ export const dashboardService = {
   },
 
   async getMonthlyPatients() {
-    // Can be implemented if backend provides this endpoint
-    return [];
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/patients-by-month');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch monthly patient trend:', error);
+      return [];
+    }
   },
 
   async getDiagnosisBreakdown() {
@@ -38,6 +43,28 @@ export const dashboardService = {
       return response.data.data || [];
     } catch (error) {
       console.error('Failed to fetch diagnosis breakdown:', error);
+      return [];
+    }
+  },
+
+  async getDiseaseTrendAnalysis(months = 6, topDiseases = 5, growthAlertThreshold = 0.3) {
+    try {
+      const response = await apiClient.get<ApiResponse<any>>('/api/v1/dashboard/disease-trend-analysis', {
+        params: { months, topDiseases, growthAlertThreshold },
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch disease trend analysis:', error);
+      return null;
+    }
+  },
+
+  async getPatientDemographics() {
+    try {
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/patient-demographics');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Failed to fetch patient demographics:', error);
       return [];
     }
   },

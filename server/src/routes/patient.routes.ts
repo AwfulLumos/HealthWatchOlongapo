@@ -10,7 +10,7 @@ import {
 const router = Router();
 
 // All routes require authentication
-router.use(authenticate);
+router.use(authenticate, authorize('Employee'));
 
 router.get('/', patientController.findAll.bind(patientController));
 router.get('/:id', validate(patientIdParamSchema), patientController.findById.bind(patientController));
@@ -22,7 +22,6 @@ router.patch(
 );
 router.delete(
   '/:id',
-  authorize('Admin', 'Doctor'),
   validate(patientIdParamSchema),
   patientController.delete.bind(patientController)
 );

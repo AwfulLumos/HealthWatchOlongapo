@@ -15,6 +15,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [loadingState, setLoadingState] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const [loggedInUserName, setLoggedInUserName] = useState("");
+  const [redirectPath, setRedirectPath] = useState("/dashboard");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +52,7 @@ export function LoginPage() {
           ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
           : username;
         setLoggedInUserName(displayName);
+        setRedirectPath(result.user?.role === "Admin" ? "/sysadmin/rbac" : "/dashboard");
         // Switch to success mode
         console.log("Login successful, switching to success mode"); // Debug log
         setLoadingState('success');
@@ -69,7 +71,7 @@ export function LoginPage() {
   };
 
   const handleLoadingComplete = () => {
-    navigate("/dashboard");
+    navigate(redirectPath);
   };
 
   // Show loading screen when authenticating or successful

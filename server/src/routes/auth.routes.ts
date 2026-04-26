@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller.js';
-import { validate, authenticate } from '../middlewares/index.js';
+import { validate, authenticate, authorize } from '../middlewares/index.js';
 import {
   loginSchema,
   registerSchema,
@@ -12,11 +12,17 @@ const router = Router();
 
 // Public routes
 router.post('/login', validate(loginSchema), authController.login.bind(authController));
-router.post('/register', validate(registerSchema), authController.register.bind(authController));
 router.post('/refresh', validate(refreshTokenSchema), authController.refreshToken.bind(authController));
 router.post('/logout', authController.logout.bind(authController));
 
 // Protected routes
+router.post(
+  '/register',
+  authenticate,
+  authorize('Admin'),
+  validate(registerSchema),
+  authController.register.bind(authController)
+);
 router.get('/profile', authenticate, authController.getProfile.bind(authController));
 router.post(
   '/change-password',

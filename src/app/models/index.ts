@@ -22,6 +22,17 @@ export { getStaffFullName } from './Staff';
 // User & Auth
 export type { User, UserRole, LoginCredentials, AuthState } from './User';
 
+// System Admin
+export type {
+  AuditAction,
+  AuditRecord,
+  RbacPermission,
+  RbacPolicy,
+  SecurityControl,
+  SecurityEvent,
+  SecurityConfiguration,
+} from './SysAdmin';
+
 // Dashboard
 export type {
   StatCard,

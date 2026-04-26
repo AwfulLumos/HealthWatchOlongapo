@@ -9,30 +9,23 @@ import {
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, authorize('Employee'));
 
 router.get('/', consultationController.findAll.bind(consultationController));
-router.get(
-  '/creation-options',
-  authorize('Admin', 'Doctor', 'Nurse', 'Midwife'),
-  consultationController.getCreationOptions.bind(consultationController)
-);
+router.get('/creation-options', consultationController.getCreationOptions.bind(consultationController));
 router.get('/:id', validate(consultationIdParamSchema), consultationController.findById.bind(consultationController));
 router.post(
   '/',
-  authorize('Admin', 'Doctor', 'Nurse', 'Midwife'),
   validate(createConsultationSchema),
   consultationController.create.bind(consultationController)
 );
 router.patch(
   '/:id',
-  authorize('Admin', 'Doctor', 'Nurse', 'Midwife'),
   validate(updateConsultationSchema),
   consultationController.update.bind(consultationController)
 );
 router.delete(
   '/:id',
-  authorize('Admin', 'Doctor'),
   validate(consultationIdParamSchema),
   consultationController.delete.bind(consultationController)
 );

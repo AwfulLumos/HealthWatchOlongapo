@@ -359,6 +359,7 @@ function AppointmentModal({
 
 export function AppointmentsPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [modal, setModal] = useState<{ mode: AppointmentModalMode; appt?: AppointmentRecord } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -371,6 +372,7 @@ export function AppointmentsPage() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All Status");
   const [dateFilter, setDateFilter] = useState("");
+  const listPageSize = 10;
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -508,6 +510,16 @@ export function AppointmentsPage() {
     `${a.patient} ${a.id} ${a.purpose}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / listPageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStart = (safeCurrentPage - 1) * listPageSize;
+  const pageEnd = pageStart + listPageSize;
+  const paginated = filtered.slice(pageStart, pageEnd);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, dateFilter]);
+
   const calendarDays = getCalendarGridDates(calendarMonth);
   const appointmentsByDate = calendarAppointments.reduce<Record<string, AppointmentRecord[]>>((acc, appointment) => {
     const key = formatDateForApi(new Date(appointment.scheduledDate));
@@ -628,8 +640,12 @@ export function AppointmentsPage() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((a, i) => (
-                      <tr key={a.id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}>
+                    paginated.map((a, i) => (
+                      <tr
+                        key={a.id}
+                        className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                        onClick={() => setModal({ mode: "view", appt: a })}
+                      >
                         <td className="px-4 py-3">
                           <span className="text-blue-600 text-sm font-semibold" title={a.id}>{formatEntityId(a.id, "APT")}</span>
                         </td>
@@ -653,8 +669,9 @@ export function AppointmentsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button onClick={() => setModal({ mode: "view", appt: a })} className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors">View</button>
-                            <button onClick={() => {
+                            <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "view", appt: a }); }} className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors">View</button>
+                            <button onClick={(e) => {
+                              e.stopPropagation();
                               setSuccessModal(null);
                               setModal({ mode: "edit", appt: a });
                             }} className="px-2 py-1 text-gray-500 hover:bg-gray-100 rounded text-xs transition-colors">Edit</button>
@@ -674,8 +691,8 @@ export function AppointmentsPage() {
                 No appointments found. {appointments.length === 0 ? "Click 'Schedule Appointment' to add one." : "Try adjusting your search."}
               </div>
             ) : (
-              filtered.map((a) => (
-                <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
+              paginated.map((a) => (
+                <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors cursor-pointer" onClick={() => setModal({ mode: "view", appt: a })}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <span className="text-blue-600 text-xs font-semibold" title={a.id}>{formatEntityId(a.id, "APT")}</span>
@@ -702,8 +719,9 @@ export function AppointmentsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 border-t border-gray-50 pt-3">
-                    <button onClick={() => setModal({ mode: "view", appt: a })} className="flex-1 py-1.5 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors border border-gray-200">View</button>
-                    <button onClick={() => {
+                    <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "view", appt: a }); }} className="flex-1 py-1.5 text-blue-600 hover:bg-blue-50 rounded text-xs transition-colors border border-gray-200">View</button>
+                    <button onClick={(e) => {
+                      e.stopPropagation();
                       setSuccessModal(null);
                       setModal({ mode: "edit", appt: a });
                     }} className="flex-1 py-1.5 text-gray-500 hover:bg-gray-100 rounded text-xs transition-colors border border-gray-200">Edit</button>
@@ -711,6 +729,35 @@ export function AppointmentsPage() {
                 </div>
               ))
             )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50">
+            <p className="text-gray-400 text-xs sm:text-sm">Showing {paginated.length} of {filtered.length} appointments</p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={safeCurrentPage === 1}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCurrentPage(n)}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-200 text-xs sm:text-sm ${n === safeCurrentPage ? "bg-blue-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-100"}`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </>
       ) : (

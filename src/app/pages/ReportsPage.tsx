@@ -1,23 +1,44 @@
 import { useState, useEffect } from "react";
-import { Download, Users, Stethoscope, Activity, Building2, Heart, Pill } from "lucide-react";
+import { Download, Users, Stethoscope, Activity, Heart, Pill, AlertTriangle } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts";
 import { dashboardService } from "../services/dashboardService";
 import { ReportsSkeleton } from "../components/skeletons/ReportsSkeleton";
+
+interface DiseaseTrend {
+  diagnosis: string;
+  totalCases: number;
+  latestMonthCases: number;
+  previousMonthCases: number;
+  growthRate: number;
+}
+
+interface OutbreakAlert {
+  diagnosis: string;
+  latestMonthCases: number;
+  previousMonthCases: number;
+  growthRate: number;
+  mostAffectedBarangays: Array<{ barangay: string; count: number }>;
+}
+
+interface DiseaseTrendAnalysis {
+  trendChart: Array<Record<string, string | number>>;
+  trends: DiseaseTrend[];
+  potentialOutbreaks: OutbreakAlert[];
+}
 
 export function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [monthlyConsultations, setMonthlyConsultations] = useState<any[]>([]);
   const [diagnosisBreakdown, setDiagnosisBreakdown] = useState<any[]>([]);
-  const [stationData, setStationData] = useState<any[]>([]);
   const [genderData, setGenderData] = useState<any[]>([]);
+  const [diseaseTrendAnalysis, setDiseaseTrendAnalysis] = useState<DiseaseTrendAnalysis | null>(null);
   const reportCards = [
     { title: "Patient Demographics", desc: "Complete patient statistics", icon: Users, color: "bg-blue-100 text-blue-600" },
     { title: "Consultation Summary", desc: "Monthly consultation breakdown", icon: Stethoscope, color: "bg-green-100 text-green-600" },
     { title: "Diagnosis Report", desc: "Top diagnoses and trends", icon: Activity, color: "bg-purple-100 text-purple-600" },
-    { title: "Station Performance", desc: "Barangay health station metrics", icon: Building2, color: "bg-orange-100 text-orange-600" },
     { title: "Vital Signs Summary", desc: "Population health indicators", icon: Heart, color: "bg-red-100 text-red-600" },
     { title: "Prescription Analytics", desc: "Medication dispensing report", icon: Pill, color: "bg-teal-100 text-teal-600" },
   ];
@@ -29,9 +50,11 @@ const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC
     const fetchReportsData = async () => {
       setIsLoading(true);
       try {
-        const [consultationChart, diagnosisData] = await Promise.all([
+        const [consultationChart, diagnosisData, demographicsData, diseaseTrends] = await Promise.all([
           dashboardService.getConsultationsChart(),
           dashboardService.getDiagnosisBreakdown(),
+          dashboardService.getPatientDemographics(),
+          dashboardService.getDiseaseTrendAnalysis(),
         ]);
         
         setMonthlyConsultations(consultationChart);
@@ -42,9 +65,8 @@ const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC
           color: item.color || chartColors[index % chartColors.length],
         }));
         setDiagnosisBreakdown(transformedDiagnosis);
-        // Set placeholder data for station and gender until backend provides endpoints
-        setStationData([]);
-        setGenderData([]);
+        setGenderData(demographicsData || []);
+        setDiseaseTrendAnalysis(diseaseTrends);
       } catch (error) {
         console.error('Failed to fetch reports data:', error);
       } finally {
@@ -57,6 +79,13 @@ const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC
   if (isLoading) {
     return <ReportsSkeleton />;
   }
+
+  const trendSeries = diseaseTrendAnalysis?.trends ?? [];
+  const trendChart = diseaseTrendAnalysis?.trendChart ?? [];
+  const outbreaks = diseaseTrendAnalysis?.potentialOutbreaks ?? [];
+
+  const formatGrowth = (value: number) => `${value >= 0 ? "+" : ""}${(value * 100).toFixed(0)}%`;
+
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">
@@ -145,23 +174,7 @@ const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-        {/* Station comparison */}
-        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
-          <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Station Performance</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={stationData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-              <XAxis type="number" style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} />
-              <YAxis type="category" dataKey="station" width={60} style={{ fontSize: "0.6rem" }} tick={{ fill: "#6B7280" }} />
-              <Tooltip />
-              <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
-              <Bar dataKey="patients" name="Patients" fill="#3B82F6" radius={[0, 2, 2, 0]} />
-              <Bar dataKey="consultations" name="Consultations" fill="#14B8A6" radius={[0, 2, 2, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="grid grid-cols-1 gap-3 sm:gap-4">
         {/* Gender distribution */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
           <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Patient Demographics</h3>
@@ -200,6 +213,76 @@ const chartColors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Disease Trend Analysis (Last 6 Months)</h3>
+          {trendChart.length === 0 ? (
+            <p className="text-gray-500 text-xs sm:text-sm">No diagnosis trend data available yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} />
+                <YAxis style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} width={30} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
+                {trendSeries.map((item, index) => (
+                  <Line
+                    key={item.diagnosis}
+                    type="monotone"
+                    dataKey={item.diagnosis}
+                    stroke={chartColors[index % chartColors.length]}
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+          {trendSeries.length > 0 && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {trendSeries.map((item) => (
+                <div key={item.diagnosis} className="rounded-lg border border-gray-100 bg-gray-50 p-2">
+                  <p className="text-xs font-semibold text-gray-800">{item.diagnosis}</p>
+                  <p className="text-[0.7rem] text-gray-500">Total cases: {item.totalCases}</p>
+                  <p className="text-[0.7rem] text-gray-500">Current month: {item.latestMonthCases}</p>
+                  <p className={`text-[0.7rem] font-medium ${item.growthRate >= 0.3 ? "text-red-600" : "text-gray-600"}`}>
+                    Change vs last month: {formatGrowth(item.growthRate)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <h3 className="text-gray-800 mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Potential Outbreak Alerts</h3>
+          {outbreaks.length === 0 ? (
+            <p className="text-gray-500 text-xs sm:text-sm">No outbreak signals detected from recent diagnosis trends.</p>
+          ) : (
+            <div className="space-y-2">
+              {outbreaks.map((outbreak) => (
+                <div key={outbreak.diagnosis} className="rounded-lg border border-red-100 bg-red-50 p-2.5">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-red-700">{outbreak.diagnosis}</p>
+                      <p className="text-[0.7rem] text-red-600">
+                        {outbreak.latestMonthCases} cases this month ({formatGrowth(outbreak.growthRate)} vs {outbreak.previousMonthCases} last month)
+                      </p>
+                      <p className="text-[0.7rem] text-red-700 mt-1">
+                        Hotspots: {outbreak.mostAffectedBarangays.map((b) => `${b.barangay} (${b.count})`).join(", ") || "Not specified"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

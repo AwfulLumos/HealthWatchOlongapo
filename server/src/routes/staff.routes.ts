@@ -12,10 +12,10 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
-router.get('/', staffController.findAll.bind(staffController));
-router.get('/:id', validate(staffIdParamSchema), staffController.findById.bind(staffController));
+// Staff directory is readable by both admin and employee roles.
+router.get('/', authorize('Admin', 'Employee'), staffController.findAll.bind(staffController));
+router.get('/:id', authorize('Admin', 'Employee'), validate(staffIdParamSchema), staffController.findById.bind(staffController));
 
-// Admin only routes
 router.post(
   '/',
   authorize('Admin'),
