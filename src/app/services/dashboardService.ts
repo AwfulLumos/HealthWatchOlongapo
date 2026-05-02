@@ -6,6 +6,19 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// Build last N months in "YYYY-MM" format for the month selector
+export function buildMonthOptions(count = 12): Array<{ label: string; value: string }> {
+  const options: Array<{ label: string; value: string }> = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    options.push({ label, value });
+  }
+  return options;
+}
+
 export const dashboardService = {
   async getStats() {
     try {
@@ -17,9 +30,25 @@ export const dashboardService = {
     }
   },
 
-  async getConsultationsChart() {
+  /**
+   * Fetch monthly stats scoped to a specific month (YYYY-MM).
+   * Falls back to getStats() for current-period data when no month is given.
+   */
+  async getMonthlyStats(yearMonth?: string) {
     try {
-      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/consultations-by-month');
+      const params = yearMonth ? { yearMonth } : {};
+      const response = await apiClient.get<ApiResponse<any>>('/api/v1/dashboard/stats', { params });
+      return response.data.data || {};
+    } catch (error) {
+      console.error('Failed to fetch monthly stats:', error);
+      return {};
+    }
+  },
+
+  async getConsultationsChart(yearMonth?: string) {
+    try {
+      const params = yearMonth ? { yearMonth } : {};
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/consultations-by-month', { params });
       return response.data.data || [];
     } catch (error) {
       console.error('Failed to fetch consultations chart:', error);
@@ -27,9 +56,10 @@ export const dashboardService = {
     }
   },
 
-  async getMonthlyPatients() {
+  async getMonthlyPatients(yearMonth?: string) {
     try {
-      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/patients-by-month');
+      const params = yearMonth ? { yearMonth } : {};
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/patients-by-month', { params });
       return response.data.data || [];
     } catch (error) {
       console.error('Failed to fetch monthly patient trend:', error);
@@ -37,9 +67,10 @@ export const dashboardService = {
     }
   },
 
-  async getDiagnosisBreakdown() {
+  async getDiagnosisBreakdown(yearMonth?: string) {
     try {
-      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/top-diagnoses');
+      const params = yearMonth ? { yearMonth } : {};
+      const response = await apiClient.get<ApiResponse<any[]>>('/api/v1/dashboard/top-diagnoses', { params });
       return response.data.data || [];
     } catch (error) {
       console.error('Failed to fetch diagnosis breakdown:', error);
