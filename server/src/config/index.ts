@@ -29,13 +29,12 @@ export const config = {
     secret: process.env.COOKIE_SECRET || 'default-cookie-secret',
   },
 
-  // CORS
 // CORS
   cors: {
     origin: [
-      'http://localhost:5173', 
+      'http://localhost:5173',
       'https://health-watch-olongapo.vercel.app'
-    ],
+    ] as string[], // Add "as string[]" here
   },
   
   // Rate Limiting
