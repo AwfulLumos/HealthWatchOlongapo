@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { StaffRole, UserRole } from '@prisma/client';
+import type { staff_role as StaffRole, user_role as UserRole } from '@prisma/client';
 
 // Extend Express Request type
 declare global {

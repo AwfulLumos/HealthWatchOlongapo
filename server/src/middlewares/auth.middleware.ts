@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 import { prisma } from '../config/database.js';
-import { StaffRole, UserRole } from '@prisma/client';
+import type { staff_role as StaffRole, user_role as UserRole } from '@prisma/client';
 
 export async function authenticate(
   req: Request,

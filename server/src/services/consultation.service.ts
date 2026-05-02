@@ -2,6 +2,7 @@ import { prisma } from '../config/database.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { CreateConsultationInput, UpdateConsultationInput } from '../validators/consultation.validator.js';
 import { Prisma } from '@prisma/client';
+import type { record_status, staff_role } from '@prisma/client';
 
 interface ConsultationCreationOptions {
   patients: Array<{
@@ -9,15 +10,15 @@ interface ConsultationCreationOptions {
     firstName: string;
     lastName: string;
     fullName: string;
-    status: string;
+    status: record_status;
   }>;
   staff: Array<{
     id: string;
     firstName: string;
     lastName: string;
     fullName: string;
-    role: string;
-    accountStatus: string;
+    role: staff_role;
+    accountStatus: record_status;
   }>;
   defaultStaffId?: string;
 }
@@ -59,7 +60,7 @@ export class ConsultationService {
         firstName: patient.firstName,
         lastName: patient.lastName,
         fullName: `${patient.firstName} ${patient.lastName}`.trim(),
-        status: patient.status,
+        status: patient.status ?? 'Active',
       })),
       staff: staffMembers.map((staff) => ({
         id: staff.id,
@@ -67,7 +68,7 @@ export class ConsultationService {
         lastName: staff.lastName,
         fullName: `${staff.firstName} ${staff.lastName}`.trim(),
         role: staff.role,
-        accountStatus: staff.accountStatus,
+        accountStatus: staff.accountStatus ?? 'Active',
       })),
       defaultStaffId: user?.staffId ?? undefined,
     };
