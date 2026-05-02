@@ -6,6 +6,7 @@ import {
   UpdateAppointmentInput,
 } from '../validators/appointment.validator.js';
 import { Prisma } from '@prisma/client';
+import type { record_status, staff_role } from '@prisma/client';
 import { endOfDay, startOfDay } from '../utils/date.js';
 
 interface AppointmentCreationOptions {
@@ -14,15 +15,15 @@ interface AppointmentCreationOptions {
     firstName: string;
     lastName: string;
     fullName: string;
-    status: string;
+    status: record_status;
   }>;
   staff: Array<{
     id: string;
     firstName: string;
     lastName: string;
     fullName: string;
-    role: string;
-    accountStatus: string;
+    role: staff_role;
+    accountStatus: record_status;
   }>;
   defaultStaffId?: string;
 }
@@ -172,7 +173,7 @@ export class AppointmentService {
         firstName: patient.firstName,
         lastName: patient.lastName,
         fullName: `${patient.firstName} ${patient.lastName}`.trim(),
-        status: patient.status,
+        status: patient.status ?? 'Active',
       })),
       staff: staffMembers.map((staff) => ({
         id: staff.id,
@@ -180,7 +181,7 @@ export class AppointmentService {
         lastName: staff.lastName,
         fullName: `${staff.firstName} ${staff.lastName}`.trim(),
         role: staff.role,
-        accountStatus: staff.accountStatus,
+        accountStatus: staff.accountStatus ?? 'Active',
       })),
       defaultStaffId: user?.staffId ?? undefined,
     };
@@ -268,7 +269,7 @@ export class AppointmentService {
 
     const nextPatientId = data.patientId ?? appointment.patientId;
     const nextStaffId = data.staffId ?? appointment.staffId;
-    const nextStatus = data.status ?? appointment.status;
+    const nextStatus = data.status ?? appointment.status ?? undefined;
     const nextScheduledDate = data.scheduledDate
       ? this.parseScheduledDate(data.scheduledDate)
       : appointment.scheduledDate;

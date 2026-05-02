@@ -203,6 +203,7 @@ class SysAdminService {
     const mapped = logs.map((log): AuditRecord => {
       const actorUser = log.userId ? userMap.get(log.userId) : undefined;
       const newData = (log.newData as Record<string, unknown> | null) || null;
+      const createdAt = log.createdAt ?? new Date();
 
       const resourceFromPayload = typeof newData?.resource === 'string' ? newData.resource : undefined;
       const statusFromPayload = typeof newData?.status === 'string' ? newData.status : undefined;
@@ -214,7 +215,7 @@ class SysAdminService {
 
       return {
         id: formatAuditLogId(log.id),
-        timestamp: log.createdAt.toISOString().slice(0, 16).replace('T', ' '),
+        timestamp: createdAt.toISOString().slice(0, 16).replace('T', ' '),
         actor,
         role,
         action: log.action as AuditRecord['action'],

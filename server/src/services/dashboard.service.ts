@@ -254,11 +254,16 @@ export class DashboardService {
     const latestMonthBarangays = new Map<string, Map<string, number>>();
 
     for (const consultation of consultations) {
+      if (!consultation.date) {
+        continue;
+      }
+
+      const consultationDate = consultation.date;
       const diagnosisLabel = consultation.diagnosis.trim();
       if (!diagnosisLabel) continue;
 
       const diagnosisKey = diagnosisLabel.toLowerCase();
-      const monthStart = new Date(consultation.date.getFullYear(), consultation.date.getMonth(), 1);
+      const monthStart = new Date(consultationDate.getFullYear(), consultationDate.getMonth(), 1);
       const monthKey = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
       if (!monthLabels.has(monthKey)) continue;
 
