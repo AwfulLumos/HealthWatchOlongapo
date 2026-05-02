@@ -41,7 +41,7 @@ export function DashboardPage() {
           dashboardService.getRecentActivity(),
           dashboardService.getUpcomingAppointments(),
         ]);
-        
+
         // Map backend stats to card format with icons
         if (stats && typeof stats === 'object') {
           setStatsCards([
@@ -51,13 +51,13 @@ export function DashboardPage() {
             { ...defaultStatsCards[3], value: stats.totalStaff ?? 0 },
           ]);
         }
-        
+
         const normalizedConsultations = (consultationChart || []).map((item: any) => ({
           day: item.day || item.month || "",
           consultations: Number(item.consultations ?? item.count ?? 0),
         }));
         setConsultationsChartData(normalizedConsultations);
-        
+
         // Transform diagnosis data: backend returns { diagnosis, count }, frontend expects { name, value, color }
         const coloredDiagnosis = (diagnosisBreakdown || []).map((item: any, index: number) => ({
           name: item.diagnosis || item.name || "Unknown",
@@ -65,7 +65,7 @@ export function DashboardPage() {
           color: item.color || diagnosisColors[index % diagnosisColors.length],
         }));
         setDiagnosisData(coloredDiagnosis);
-        
+
         // Transform recent patients: backend returns { barangay: { name } }, extract the string
         const transformedPatients = (recentActivity || []).map((p: any) => ({
           ...p,
@@ -75,7 +75,7 @@ export function DashboardPage() {
           status: p.status || "Active",
         }));
         setRecentPatients(transformedPatients);
-        
+
         // Transform appointments: backend returns nested patient/staff objects
         const transformedAppts = (upcomingAppts || []).map((appt: any) => ({
           ...appt,
@@ -84,7 +84,7 @@ export function DashboardPage() {
           time: appt.time || (appt.scheduledDate ? new Date(appt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"),
         }));
         setUpcomingAppointments(transformedAppts);
-        
+
         const monthlyPatients = await dashboardService.getMonthlyPatients();
         const normalizedMonthlyPatients = (monthlyPatients || []).map((item: any) => ({
           month: item.month || "",
@@ -110,7 +110,7 @@ export function DashboardPage() {
         <div>
           <h1 className="text-gray-900 text-lg sm:text-xl lg:text-2xl font-bold">Dashboard</h1>
           <p className="text-gray-500 mt-0.5 text-xs sm:text-sm">
-            Saturday, March 28, 2026 — Health Watch Olongapo
+            {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} — Health Watch Olongapo
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -124,8 +124,8 @@ export function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {statsCards.map((card, index) => (
-          <div 
-            key={card.label} 
+          <div
+            key={card.label}
             className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 lg:p-5 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 hover-lift cursor-default animate-fade-in-up shadow-card hover:shadow-card-hover"
             style={{ animationDelay: `${index * 100}ms` }}
           >
@@ -156,13 +156,13 @@ export function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="day" tick={{ fill: "#6B7280", fontSize: 10 }} />
               <YAxis tick={{ fill: "#6B7280", fontSize: 10 }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: 'none', 
-                  borderRadius: '12px', 
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)' 
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                }}
               />
               <Bar dataKey="consultations" fill="#3B82F6" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -181,13 +181,13 @@ export function DashboardPage() {
                   <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: 'none', 
-                  borderRadius: '12px', 
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)' 
-                }} 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -215,13 +215,13 @@ export function DashboardPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="month" tick={{ fill: "#6B7280", fontSize: 10 }} />
             <YAxis tick={{ fill: "#6B7280", fontSize: 10 }} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'white', 
-                border: 'none', 
-                borderRadius: '12px', 
-                boxShadow: '0 10px 40px rgba(0,0,0,0.1)' 
-              }} 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+              }}
             />
             <Line type="monotone" dataKey="patients" stroke="#14B8A6" strokeWidth={2} dot={{ fill: "#14B8A6", strokeWidth: 2, r: 3 }} activeDot={{ r: 5, fill: "#14B8A6" }} />
           </LineChart>
@@ -241,8 +241,8 @@ export function DashboardPage() {
               <p className="text-gray-400 text-center py-4 text-xs sm:text-sm">No recent patient activity</p>
             ) : (
               recentPatients.map((p) => (
-                <div 
-                  key={p.id} 
+                <div
+                  key={p.id}
                   className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-50 last:border-0 hover:bg-blue-50/50 rounded-lg px-1.5 sm:px-2 -mx-1.5 sm:-mx-2 transition-all duration-200 cursor-pointer group"
                 >
                   <div className="flex items-center gap-2 sm:gap-3">
