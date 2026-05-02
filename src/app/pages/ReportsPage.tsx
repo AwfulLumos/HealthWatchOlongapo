@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Users, Stethoscope, Activity, Heart, Pill, AlertTriangle } from "lucide-react";
+import { Download, Users, Stethoscope, Activity, Heart, Pill, AlertTriangle, FileText, X } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts";
 import { dashboardService, buildMonthOptions } from "../services/dashboardService";
 import { ReportsSkeleton } from "../components/skeletons/ReportsSkeleton";
+import { FormLoadingOverlay } from "../components/feedback/FormLoadingOverlay";
+import { prescriptionService } from "../services/prescriptionService";
+import { vitalSignsService } from "../services/vitalSignsService";
 
 interface DiseaseTrend {
   diagnosis: string;
@@ -29,6 +32,18 @@ interface DiseaseTrendAnalysis {
   potentialOutbreaks: OutbreakAlert[];
 }
 
+type ReportKey =
+  | "patient-demographics"
+  | "consultation-summary"
+  | "diagnosis-report"
+  | "vital-signs-summary"
+  | "prescription-analytics";
+
+type ExportRange = {
+  startDate: string;
+  endDate: string;
+};
+
 // Build dynamic month options (last 12 months)
 const MONTH_OPTIONS = buildMonthOptions(12);
 
@@ -51,13 +66,200 @@ export function ReportsPage() {
   const [genderData, setGenderData] = useState<any[]>([]);
   const [diseaseTrendAnalysis, setDiseaseTrendAnalysis] = useState<DiseaseTrendAnalysis | null>(null);
 
-  const reportCards = [
-    { title: "Patient Demographics", desc: "Complete patient statistics", icon: Users, color: "bg-blue-100 text-blue-600" },
-    { title: "Consultation Summary", desc: "Monthly consultation breakdown", icon: Stethoscope, color: "bg-green-100 text-green-600" },
-    { title: "Diagnosis Report", desc: "Top diagnoses and trends", icon: Activity, color: "bg-purple-100 text-purple-600" },
-    { title: "Vital Signs Summary", desc: "Population health indicators", icon: Heart, color: "bg-red-100 text-red-600" },
-    { title: "Prescription Analytics", desc: "Medication dispensing report", icon: Pill, color: "bg-teal-100 text-teal-600" },
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<ReportKey>("patient-demographics");
+  const [exportRange, setExportRange] = useState<ExportRange>({ startDate: "", endDate: "" });
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const reportCards: Array<{
+    key: ReportKey;
+    title: string;
+    desc: string;
+    icon: typeof Users;
+    color: string;
+  }> = [
+    { key: "patient-demographics", title: "Patient Demographics", desc: "Complete patient statistics", icon: Users, color: "bg-blue-100 text-blue-600" },
+    { key: "consultation-summary", title: "Consultation Summary", desc: "Monthly consultation breakdown", icon: Stethoscope, color: "bg-green-100 text-green-600" },
+    { key: "diagnosis-report", title: "Diagnosis Report", desc: "Top diagnoses and trends", icon: Activity, color: "bg-purple-100 text-purple-600" },
+    { key: "vital-signs-summary", title: "Vital Signs Summary", desc: "Population health indicators", icon: Heart, color: "bg-red-100 text-red-600" },
+    { key: "prescription-analytics", title: "Prescription Analytics", desc: "Medication dispensing report", icon: Pill, color: "bg-teal-100 text-teal-600" },
   ];
+
+  const openExportModal = (reportKey?: ReportKey) => {
+    setSelectedReport(reportKey || reportCards[0].key);
+    setExportModalOpen(true);
+    setExportError(null);
+  };
+
+  const closeExportModal = () => {
+    if (isExporting) return;
+    setExportModalOpen(false);
+  };
+
+  const getDateBounds = () => {
+    const start = exportRange.startDate ? new Date(exportRange.startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    const end = exportRange.endDate ? new Date(exportRange.endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const matchesDateRange = (dateValue: string | undefined, bounds: { start: Date | null; end: Date | null }) => {
+    if (!bounds.start && !bounds.end) return true;
+    if (!dateValue) return false;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return false;
+    if (bounds.start && date < bounds.start) return false;
+    if (bounds.end && date > bounds.end) return false;
+    return true;
+  };
+
+  const toCsvValue = (value: unknown) => {
+    if (value === null || value === undefined) return "";
+    const raw = String(value).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const escaped = raw.replace(/"/g, '""');
+    if (/[",\n]/.test(escaped)) {
+      return `"${escaped}"`;
+    }
+    return escaped;
+  };
+
+  const rowsToCsv = (rows: Array<Record<string, unknown>>) => {
+    if (!rows.length) return "";
+    const headers = Object.keys(rows[0]);
+    const lines = [
+      headers.map(toCsvValue).join(","),
+      ...rows.map((row) => headers.map((h) => toCsvValue(row[h])).join(",")),
+    ];
+    return lines.join("\n");
+  };
+
+  const downloadCsv = (filename: string, rows: Array<Record<string, unknown>>) => {
+    const csv = rowsToCsv(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const average = (values: number[]) => {
+    if (!values.length) return 0;
+    const total = values.reduce((sum, v) => sum + v, 0);
+    return Number((total / values.length).toFixed(1));
+  };
+
+  const buildExportRows = async (reportKey: ReportKey): Promise<Array<Record<string, unknown>>> => {
+    if (reportKey === "patient-demographics") {
+      if (!genderData.length) {
+        return [{ Notice: "No demographic data available" }];
+      }
+      return genderData.map((g) => ({
+        Category: g.name || "Unknown",
+        Percent: g.value ?? 0,
+        Count: g.count ?? "",
+      }));
+    }
+
+    if (reportKey === "consultation-summary") {
+      if (!consultationChart.length) {
+        return [{ Notice: "No consultation data available" }];
+      }
+      return consultationChart.map((item) => ({
+        Month: item.month ?? "",
+        Regular: item.regular ?? 0,
+        FollowUp: item.followUp ?? 0,
+        Emergency: item.emergency ?? 0,
+      }));
+    }
+
+    if (reportKey === "diagnosis-report") {
+      if (!diagnosisBreakdown.length) {
+        return [{ Notice: "No diagnosis data available" }];
+      }
+      return diagnosisBreakdown.map((item) => ({
+        Diagnosis: item.name ?? "Unknown",
+        Cases: item.value ?? 0,
+      }));
+    }
+
+    if (reportKey === "vital-signs-summary") {
+      const bounds = getDateBounds();
+      const vitals = await vitalSignsService.getAll();
+      const filtered = vitals.filter((v) => matchesDateRange(v.date, bounds));
+
+      if (!filtered.length) {
+        return [{ Notice: "No vital signs data available" }];
+      }
+
+      const toNumber = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+      const pick = (values: Array<number | null>) => values.filter((v): v is number => v !== null);
+
+      const systolic = pick(filtered.map((v) => toNumber(v.bpSystolic)));
+      const diastolic = pick(filtered.map((v) => toNumber(v.bpDiastolic)));
+      const pulse = pick(filtered.map((v) => toNumber(v.pulseRate)));
+      const resp = pick(filtered.map((v) => toNumber(v.respRate)));
+      const temps = pick(filtered.map((v) => toNumber((v as { temp?: number; temperature?: number }).temp ?? (v as { temperature?: number }).temperature)));
+      const sugars = pick(filtered.map((v) => toNumber(v.bloodSugar)));
+      const weights = pick(filtered.map((v) => toNumber(v.weight)));
+      const heights = pick(filtered.map((v) => toNumber(v.height)));
+      const bmis = pick(filtered.map((v) => toNumber(v.bmi)));
+
+      return [
+        { Metric: "Records", Value: filtered.length, Unit: "" },
+        { Metric: "Avg Systolic BP", Value: average(systolic), Unit: "mmHg" },
+        { Metric: "Avg Diastolic BP", Value: average(diastolic), Unit: "mmHg" },
+        { Metric: "Avg Pulse Rate", Value: average(pulse), Unit: "bpm" },
+        { Metric: "Avg Respiratory Rate", Value: average(resp), Unit: "rpm" },
+        { Metric: "Avg Temperature", Value: average(temps), Unit: "C" },
+        { Metric: "Avg Blood Sugar", Value: average(sugars), Unit: "mg/dL" },
+        { Metric: "Avg Weight", Value: average(weights), Unit: "kg" },
+        { Metric: "Avg Height", Value: average(heights), Unit: "cm" },
+        { Metric: "Avg BMI", Value: average(bmis), Unit: "" },
+      ];
+    }
+
+    const bounds = getDateBounds();
+    const prescriptions = await prescriptionService.getAll();
+    const filtered = prescriptions.filter((p) => matchesDateRange(p.date, bounds));
+
+    if (!filtered.length) {
+      return [{ Notice: "No prescription data available" }];
+    }
+
+    const counts = filtered.reduce((acc, p) => {
+      const name = p.medicine?.trim() || "Unknown";
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+      .map(([medicine, count]) => ({ Medicine: medicine, Count: count }))
+      .sort((a, b) => (b.Count as number) - (a.Count as number));
+  };
+
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const rows = await buildExportRows(selectedReport);
+      const safeKey = selectedReport.replace(/[^a-z0-9-]/gi, "_");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      const filename = `report-${safeKey}-${dateStamp}.csv`;
+      downloadCsv(filename, rows);
+      setExportModalOpen(false);
+    } catch (error) {
+      console.error("Failed to export report:", error);
+      setExportError("Failed to generate report. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const fetchReportsData = useCallback(async (yearMonth: string) => {
     setIsLoading(true);
@@ -120,7 +322,8 @@ export function ReportsPage() {
   const selectedMonthLabel = MONTH_OPTIONS.find(o => o.value === selectedMonth)?.label ?? selectedMonth;
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 animate-fade-in">
+    <>
+      <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">
         <div>
@@ -137,7 +340,11 @@ export function ReportsPage() {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <button className="flex items-center gap-1 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-semibold">
+          <button
+            type="button"
+            onClick={() => openExportModal()}
+            className="flex items-center gap-1 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+          >
             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Export
           </button>
         </div>
@@ -334,7 +541,8 @@ export function ReportsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {reportCards.map((card, index) => (
             <div
-              key={card.title}
+              key={card.key}
+              onClick={() => openExportModal(card.key)}
               className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 hover:border-blue-300 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group cursor-pointer animate-fade-in-up"
               style={{ animationDelay: `${300 + index * 50}ms` }}
             >
@@ -342,7 +550,14 @@ export function ReportsPage() {
                 <div className={`p-2 sm:p-2.5 rounded-xl ${card.color.split(" ")[0]} group-hover:scale-110 transition-transform duration-300`}>
                   <card.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${card.color.split(" ")[1]}`} />
                 </div>
-                <button className="opacity-100 sm:opacity-0 group-hover:opacity-100 flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-all text-[0.65rem] sm:text-xs">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openExportModal(card.key);
+                  }}
+                  className="opacity-100 sm:opacity-0 group-hover:opacity-100 flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-all text-[0.65rem] sm:text-xs"
+                >
                   <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Export
                 </button>
               </div>
@@ -352,6 +567,127 @@ export function ReportsPage() {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+
+      {exportModalOpen && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3 sm:p-4 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Generate report"
+        >
+          <div className="relative w-full max-w-lg rounded-2xl border border-white/40 bg-white/90 shadow-2xl overflow-hidden animate-scale-in">
+            <div className="flex items-center justify-between gap-4 p-4 sm:p-5 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-sm sm:text-base">Generate Report</h2>
+                  <p className="text-[0.7rem] sm:text-xs text-gray-500">Export report data with filters</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeExportModal}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200"
+                aria-label="Close report modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">Report Type</label>
+                  <select
+                    value={selectedReport}
+                    onChange={(event) => setSelectedReport(event.target.value as ReportKey)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+                    disabled={isExporting}
+                  >
+                    {reportCards.map((card) => (
+                      <option key={card.key} value={card.key}>
+                        {card.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">Format</label>
+                  <select
+                    value="csv"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 text-xs sm:text-sm"
+                    disabled
+                  >
+                    <option value="csv">CSV (default)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">From</label>
+                  <input
+                    type="date"
+                    value={exportRange.startDate}
+                    onChange={(event) => setExportRange((prev) => ({ ...prev, startDate: event.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+                    disabled={isExporting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">To</label>
+                  <input
+                    type="date"
+                    value={exportRange.endDate}
+                    onChange={(event) => setExportRange((prev) => ({ ...prev, endDate: event.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+                    disabled={isExporting}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-[0.65rem] sm:text-xs text-blue-700">
+                Date filters apply to vital signs and prescriptions only. Chart-based reports export the current dashboard data.
+              </div>
+
+              {exportError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[0.65rem] sm:text-xs text-rose-700">
+                  {exportError}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end bg-gray-50/60">
+              <button
+                type="button"
+                onClick={closeExportModal}
+                disabled={isExporting}
+                className="px-3 sm:px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 transition-all duration-200 text-xs sm:text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="px-3 sm:px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isExporting ? "Generating..." : "Generate & Download"}
+              </button>
+            </div>
+
+            <FormLoadingOverlay
+              open={isExporting}
+              title="Generating report..."
+              message="Preparing export file"
+              tone="info"
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
