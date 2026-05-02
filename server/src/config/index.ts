@@ -30,10 +30,14 @@ export const config = {
   },
 
   // CORS
+// CORS
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: [
+      'http://localhost:5173', 
+      'https://health-watch-olongapo.vercel.app'
+    ],
   },
-
+  
   // Rate Limiting
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
