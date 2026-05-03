@@ -1,6 +1,6 @@
-import { CheckCircle2, Loader2, X } from "lucide-react";
+import { CheckCircle2, Loader2, X, XCircle } from "lucide-react";
 
-type StatusModalVariant = "success" | "loading";
+type StatusModalVariant = "success" | "loading" | "error";
 
 interface StatusModalProps {
   open: boolean;
@@ -22,6 +22,15 @@ export function StatusModal({
   if (!open) return null;
 
   const isLoading = variant === "loading";
+  const isError = variant === "error";
+  const statusTitle = isLoading ? "Please wait" : isError ? "Error" : "Success";
+  const statusMessage =
+    message ||
+    (isLoading
+      ? "Submitting your data..."
+      : isError
+      ? "Something went wrong. Please try again."
+      : "Your changes have been saved.");
 
   return (
     <div
@@ -47,22 +56,20 @@ export function StatusModal({
           <div className="flex items-start gap-3">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                isLoading ? "bg-blue-100" : "bg-green-100"
+                isLoading ? "bg-blue-100" : isError ? "bg-red-100" : "bg-green-100"
               }`}
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 text-blue-700 animate-spin" />
+              ) : isError ? (
+                <XCircle className="w-5 h-5 text-red-700" />
               ) : (
                 <CheckCircle2 className="w-5 h-5 text-green-700" />
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-gray-800 text-sm font-semibold">
-                {isLoading ? "Please wait" : "Success"}
-              </p>
-              <p className="text-gray-500 text-xs sm:text-sm mt-1">
-                {message || (isLoading ? "Submitting your data..." : "Your changes have been saved.")}
-              </p>
+              <p className="text-gray-800 text-sm font-semibold">{statusTitle}</p>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">{statusMessage}</p>
             </div>
           </div>
         </div>

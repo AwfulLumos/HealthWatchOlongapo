@@ -2,7 +2,6 @@ import { useState, useEffect, type FormEvent } from "react";
 import { Search, Plus, X, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { appointmentService, type AppointmentCreationOptions } from "../services/appointmentService";
 import { AppointmentsSkeleton, AppointmentsCalendarSkeleton } from "../components/skeletons/AppointmentsSkeleton";
-import { FormLoadingOverlay } from "../components/feedback/FormLoadingOverlay";
 import { StatusModal } from "../components/feedback/StatusModal";
 import type { AppointmentStatus } from "../models";
 import { formatEntityId } from "../utils";
@@ -136,6 +135,7 @@ function AppointmentModal({
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const loadingTitle = mode === "add" ? "Scheduling appointment..." : "Updating appointment...";
 
   useEffect(() => {
     setForm({
@@ -226,7 +226,6 @@ function AppointmentModal({
           </button>
         </div>
 
-        <FormLoadingOverlay open={isSubmitting} title={mode === "add" ? "Scheduling appointment..." : "Updating appointment..."} message="Syncing with backend" />
 
         <form onSubmit={handleSubmit}>
           <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
@@ -353,6 +352,15 @@ function AppointmentModal({
           )}
         </form>
       </div>
+
+      {isSubmitting && (
+        <StatusModal
+          open={isSubmitting}
+          variant="loading"
+          title={loadingTitle}
+          message="Syncing appointment data"
+        />
+      )}
     </div>
   );
 }

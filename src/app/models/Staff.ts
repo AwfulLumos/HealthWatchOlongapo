@@ -6,7 +6,7 @@ export interface Staff {
   firstName: string;
   lastName: string;
   role: StaffRole;
-  licenseNumber: string;
+  licenseNumber?: string;
   contact: string;
   email: string;
   station: string;
@@ -14,7 +14,7 @@ export interface Staff {
   accountStatus: AccountStatus;
 }
 
-export type StaffFormData = Omit<Staff, 'id'>;
+export type StaffFormData = Omit<Staff, 'id' | 'station'>;
 
 export function getStaffFullName(staff: Staff): string {
   return `${staff.firstName} ${staff.lastName}`;

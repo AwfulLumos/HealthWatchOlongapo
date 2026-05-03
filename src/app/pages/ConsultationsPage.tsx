@@ -9,7 +9,6 @@ import {
 import { vitalSignsService } from "../services/vitalSignsService";
 import { prescriptionService } from "../services/prescriptionService";
 import { authService } from "../services/authService";
-import { FormLoadingOverlay } from "../components/feedback/FormLoadingOverlay";
 import { StatusModal } from "../components/feedback/StatusModal";
 import { ConsultationsSkeleton } from "../components/skeletons/ConsultationsSkeleton";
 import { formatEntityId } from "../utils";
@@ -925,7 +924,6 @@ function ConsultationModal({
           </div>
         )}
 
-        <FormLoadingOverlay open={isSaving} title="Saving consultation..." />
       </div>
     </div>
   );
@@ -1393,6 +1391,15 @@ export function ConsultationsPage() {
           isSaving={isSaving}
           saveError={saveError}
           onSave={handleSaveConsultation}
+        />
+      )}
+
+      {isSaving && (
+        <StatusModal
+          open={isSaving}
+          variant="loading"
+          title="Saving consultation..."
+          message="Syncing consultation data"
         />
       )}
 

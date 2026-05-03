@@ -4,7 +4,6 @@ import { patientService } from "../services/patientService";
 import { barangayService } from "../services";
 import type { Patient } from "../models";
 import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
-import { FormLoadingOverlay } from "../components/feedback/FormLoadingOverlay";
 import { StatusModal } from "../components/feedback/StatusModal";
 import { formatEntityId } from "../utils";
 
@@ -192,7 +191,6 @@ function PatientModal(
           </button>
         </div>
 
-        <FormLoadingOverlay open={isSaving} title="Saving patient..." />
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Patient Info */}
@@ -364,6 +362,15 @@ function PatientModal(
           </div>
         )}
       </div>
+
+      {isSaving && (
+        <StatusModal
+          open={isSaving}
+          variant="loading"
+          title="Saving patient..."
+          message="Syncing patient data"
+        />
+      )}
     </div>
   );
 
