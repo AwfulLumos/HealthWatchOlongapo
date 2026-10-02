@@ -1,21 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, EyeOff, Lock, User, Mail, Shield, AlertTriangle, CheckCircle2, ArrowLeft } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  User,
+  Mail,
+  Shield,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowLeft,
+  UserPlus,
+  ShieldCheck,
+  Building2,
+  Sparkles,
+  Info,
+  BadgeCheck,
+} from "lucide-react";
 import { validateRegistrationForm, type RegistrationFormInput } from "../utils/validation";
 import { authService } from "../services/authService";
-import logoImage from "../../styles/Images/HealthWatchLogoPortrait.jpg";
 
 export function RegistrationPage() {
   const navigate = useNavigate();
-  
+
   // Form state
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<'Admin' | 'Employee'>('Employee');
+  const [role, setRole] = useState<"Admin" | "Employee">("Employee");
   const [staffId, setStaffId] = useState("");
-  
+
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -36,300 +51,325 @@ export function RegistrationPage() {
       password,
       confirmPassword,
       role,
-      staffId: staffId || undefined
+      staffId: staffId || undefined,
     };
 
     const validation = validateRegistrationForm(formData);
-    
+
     if (!validation.success) {
-      // Convert validation errors to field-specific errors
       const errors: Record<string, string> = {};
-      validation.errors.forEach(err => {
+      validation.errors.forEach((err) => {
         errors[err.field] = err.message;
       });
       setFieldErrors(errors);
-      setError(validation.errors[0]?.message || "Please fix the errors below");
+      setError(validation.errors[0]?.message || "Please fix the validation errors below.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      
-      // Call registration API using authService
       const result = await authService.register(validation.data!);
 
       if (result.success) {
         setSuccess(true);
-        // Redirect to staff page after 2 seconds
         setTimeout(() => {
-          navigate('/staff');
-        }, 2000);
+          navigate("/staff");
+        }, 1800);
       } else {
         setError(result.error || "Registration failed. Please try again.");
       }
     } catch (err) {
       console.error("Registration error:", err);
-      setError("An error occurred during registration. Please try again.");
+      setError("An unexpected error occurred during user registration.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Show success message
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-600 via-green-700 to-green-800 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in-up">
-          <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
-          <p className="text-gray-600 mb-4">
-            User account has been created successfully. Redirecting...
+      <div className="p-4 sm:p-8 flex items-center justify-center min-h-[70vh]">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 sm:p-10 max-w-md w-full text-center animate-scale-in">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm shadow-emerald-500/20">
+            <CheckCircle2 className="w-9 h-9" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2">
+            Personnel Enrolled!
+          </h2>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            The account for <span className="font-semibold text-slate-800">@{username}</span> has been provisioned with{" "}
+            <span className="font-semibold text-blue-600">{role === "Admin" ? "System Administrator" : "Public Health Administrator"}</span> permissions.
           </p>
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Redirecting to Staff Directory...
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
-      {/* Subtle Background Pattern */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full" style={{ 
-          backgroundImage: 'radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.2) 2%, transparent 0%)',
-          backgroundSize: '50px 50px'
-        }} />
-      </div>
-
-      <div className="relative w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center gap-8 sm:gap-10 lg:gap-16">
-
-        {/* LEFT — Logo & Branding */}
-        <div className="flex-1 flex flex-col items-center text-center animate-fade-in-up">
-          {/* Logo */}
-          <div className="mb-5 sm:mb-7">
-            <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-60 md:h-60 lg:w-72 lg:h-72 bg-white/95 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden hover-lift transition-all duration-300 cursor-default">
-              <img src={logoImage} alt="Health Watch Olongapo" className="w-full h-full object-cover" />
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
+      {/* Top Breadcrumb & Action bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <button
+            onClick={() => navigate("/staff")}
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors mb-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Staff Directory
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+              <UserPlus className="w-5 h-5" />
             </div>
-          </div>
-
-          {/* Title */}
-          <h1 className="text-white mb-2 sm:mb-3 font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight">
-            Health Watch<br />Olongapo
-          </h1>
-          
-          {/* Subtitle */}
-          <p className="text-blue-100 font-medium mb-5 sm:mb-7 text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed">
-            User Registration<br />Admin Portal
-          </p>
-
-          {/* Decorative divider */}
-          <div className="hidden sm:flex items-center gap-3">
-            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
-            <span className="text-blue-200 font-medium text-xs sm:text-sm">Create New User Account</span>
-            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Enroll Healthcare Personnel
+              </h1>
+              <p className="text-slate-500 text-xs sm:text-sm">
+                Create new authenticated accounts for Barangay Health Workers & Administrators.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT — Registration Card */}
-        <div className="w-full sm:w-[420px] lg:w-[450px] flex-shrink-0 animate-fade-in-up animation-delay-200">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6">
-            {/* Header with Back Button */}
-            <div className="flex items-center gap-2 mb-3">
-              <button
-                type="button"
-                onClick={() => navigate('/staff')}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            Admin Authorization Required
+          </span>
+        </div>
+      </div>
+
+      {/* Main Content Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT / SIDEBAR: Guidance & Role Explanations */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-blue-600" />
+              Role Responsibilities
+            </h2>
+
+            <div className="space-y-3">
+              <div
+                onClick={() => setRole("Employee")}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${role === "Employee"
+                  ? "bg-blue-50/70 border-blue-300 ring-2 ring-blue-500/20"
+                  : "bg-slate-50 border-slate-200/70 hover:bg-slate-100/70"
+                  }`}
               >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h2 className="text-gray-900 font-bold text-lg sm:text-xl">
-                  Register New User
-                </h2>
-                <p className="text-gray-500 font-medium text-xs sm:text-sm">
-                  Create a new admin or employee account
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-slate-800">Public Health Admin</p>
+                  {role === "Employee" && <BadgeCheck className="w-4 h-4 text-blue-600" />}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Full clinical access to Patient Profiles, Consultations, Vital Signs, Prescriptions, Appointments, and DOH Reports.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setRole("Admin")}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${role === "Admin"
+                  ? "bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-500/20"
+                  : "bg-slate-50 border-slate-200/70 hover:bg-slate-100/70"
+                  }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-slate-800">System Administrator</p>
+                  {role === "Admin" && <BadgeCheck className="w-4 h-4 text-indigo-600" />}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Platform management, RBAC policy control, Staff onboarding, Immutable Audit Trail, and Security configurations.
                 </p>
               </div>
             </div>
+          </div>
 
-            <form onSubmit={handleRegister} className="space-y-3">{/* Username */}
-              <div className="animate-fade-in animation-delay-300">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Username <span className="text-red-500">*</span>
-                </label>
-                <div className="relative group">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-600" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username"
-                    className={`w-full pl-9 pr-3 py-2 border-2 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm ${
-                      fieldErrors.username ? 'border-red-300' : 'border-gray-200'
-                    }`}
-                  />
+          <div className="bg-gradient-to-br from-blue-900 to-indigo-950 rounded-2xl p-5 text-white shadow-md">
+            <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold mb-2">
+              <Info className="w-4 h-4" />
+              Security Protocol Notice
+            </div>
+            <p className="text-[11px] text-slate-200 leading-relaxed">
+              In accordance with RA 10173 (Data Privacy Act of 2012), passwords must be at least 8 characters, include upper and lowercase letters, a number, and a special character.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT / MAIN: User Registration Form */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
+            <h2 className="text-base font-bold text-slate-900 mb-5">Personnel Credentials & Account Info</h2>
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              {/* Username & Staff ID Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                    Username <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="e.g. maria.santos"
+                      className={`w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all ${fieldErrors.username ? "border-rose-300" : "border-slate-200"
+                        }`}
+                    />
+                  </div>
+                  {fieldErrors.username && (
+                    <p className="mt-1 text-xs text-rose-600 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {fieldErrors.username}
+                    </p>
+                  )}
                 </div>
-                {fieldErrors.username && (
-                  <p className="mt-0.5 text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {fieldErrors.username}
-                  </p>
-                )}
+
+                <div>
+                  <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                    Staff / Employee ID <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative group">
+                    <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                    <input
+                      type="text"
+                      value={staffId}
+                      onChange={(e) => setStaffId(e.target.value)}
+                      placeholder="e.g. CHO-2026-089"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Email */}
-              <div className="animate-fade-in animation-delay-350">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Email <span className="text-red-500">*</span>
+              {/* Email Address */}
+              <div>
+                <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                  Official Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative group">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-600" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className={`w-full pl-9 pr-3 py-2 border-2 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm ${
-                      fieldErrors.email ? 'border-red-300' : 'border-gray-200'
-                    }`}
+                    placeholder="e.g. maria.santos@olongapocity.gov.ph"
+                    className={`w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all ${fieldErrors.email ? "border-rose-300" : "border-slate-200"
+                      }`}
                   />
                 </div>
                 {fieldErrors.email && (
-                  <p className="mt-0.5 text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
+                  <p className="mt-1 text-xs text-rose-600 flex items-center gap-1 font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5" />
                     {fieldErrors.email}
                   </p>
                 )}
               </div>
 
-              {/* Password */}
-              <div className="animate-fade-in animation-delay-400">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-600" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password (min 8 characters)"
-                    className={`w-full pl-9 pr-10 py-2 border-2 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm ${
-                      fieldErrors.password ? 'border-red-300' : 'border-gray-200'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password && (
-                  <p className="mt-0.5 text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {fieldErrors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* Confirm Password */}
-              <div className="animate-fade-in animation-delay-450">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-600" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
-                    className={`w-full pl-9 pr-10 py-2 border-2 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm ${
-                      fieldErrors.confirmPassword ? 'border-red-300' : 'border-gray-200'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {fieldErrors.confirmPassword && (
-                  <p className="mt-0.5 text-xs text-red-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {fieldErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              {/* Role Selection */}
-              <div className="animate-fade-in animation-delay-500">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Role <span className="text-red-500">*</span>
-                </label>
-                <div className="relative group">
-                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-600 z-10" />
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as 'Admin' | 'Employee')}
-                    className="w-full pl-9 pr-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm appearance-none cursor-pointer"
-                  >
-                    <option value="Employee">Public Health Administrator</option>
-                    <option value="Admin">System Administrator</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+              {/* Password Fields Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Min. 8 characters"
+                      className={`w-full pl-10 pr-10 py-2.5 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all ${fieldErrors.password ? "border-rose-300" : "border-slate-200"
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p className="mt-1 text-xs text-rose-600 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {fieldErrors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                    Confirm Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat password"
+                      className={`w-full pl-10 pr-10 py-2.5 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all ${fieldErrors.confirmPassword ? "border-rose-300" : "border-slate-200"
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="mt-1 text-xs text-rose-600 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {fieldErrors.confirmPassword}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Staff ID (Optional) */}
-              <div className="animate-fade-in animation-delay-550">
-                <label className="block text-gray-700 mb-1 font-semibold text-xs sm:text-sm">
-                  Staff ID <span className="text-gray-400 font-normal">(Optional)</span>
-                </label>
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={staffId}
-                    onChange={(e) => setStaffId(e.target.value)}
-                    placeholder="Enter staff ID if available"
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Error Message */}
+              {/* General Error Banner */}
               {error && (
-                <div className="bg-red-50 border-2 border-red-200 text-red-600 px-3 py-2 rounded-lg animate-fade-in-down font-medium text-xs sm:text-sm flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl animate-fade-in font-medium text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 mt-4 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in animation-delay-600"
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Creating Account...
-                  </span>
-                ) : (
-                  'Create User Account'
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => navigate("/staff")}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-blue-600/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Provisioning Account...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Enroll Personnel
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -337,3 +377,4 @@ export function RegistrationPage() {
     </div>
   );
 }
+
