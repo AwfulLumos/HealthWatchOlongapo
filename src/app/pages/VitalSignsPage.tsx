@@ -1,6 +1,32 @@
-import { useState, useEffect } from "react";
-import { Search, Activity, Heart, Thermometer, TrendingUp } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Activity,
+  Heart,
+  Thermometer,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  User,
+  Calendar,
+  ChevronRight,
+  Filter,
+  CheckCircle2,
+  X,
+  Droplet
+} from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  ReferenceLine
+} from "recharts";
+import { Link } from "react-router";
 import { vitalSignsService } from "../services/vitalSignsService";
 import { VitalSignsSkeleton } from "../components/skeletons/VitalSignsSkeleton";
 import { formatEntityId } from "../utils";
@@ -33,19 +59,31 @@ type TrendPoint = {
 };
 
 function getBPStatus(systolic: number, diastolic: number) {
-  if (systolic >= 140 || diastolic >= 90) return { label: "High", color: "text-red-600", bg: "bg-red-100" };
-  if (systolic >= 130 || diastolic >= 80) return { label: "Elevated", color: "text-orange-600", bg: "bg-orange-100" };
-  return { label: "Normal", color: "text-green-600", bg: "bg-green-100" };
+  if (systolic >= 180 || diastolic >= 120) {
+    return { label: "Crisis", color: "text-rose-700", bg: "bg-rose-100 border border-rose-300 animate-pulse", dot: "bg-rose-600" };
+  }
+  if (systolic >= 140 || diastolic >= 90) {
+    return { label: "High", color: "text-rose-700", bg: "bg-rose-50 border border-rose-200", dot: "bg-rose-500" };
+  }
+  if (systolic >= 130 || diastolic >= 80) {
+    return { label: "Elevated", color: "text-amber-700", bg: "bg-amber-50 border border-amber-200", dot: "bg-amber-500" };
+  }
+  if (systolic < 90 || diastolic < 60) {
+    return { label: "Low", color: "text-sky-700", bg: "bg-sky-50 border border-sky-200", dot: "bg-sky-500" };
+  }
+  return { label: "Normal", color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200", dot: "bg-emerald-500" };
 }
 
 function getBSStatus(bs: number) {
-  if (bs >= 200) return { label: "High", color: "text-red-600", bg: "bg-red-100" };
-  if (bs >= 140) return { label: "Elevated", color: "text-orange-600", bg: "bg-orange-100" };
-  return { label: "Normal", color: "text-green-600", bg: "bg-green-100" };
+  if (!bs) return { label: "N/A", color: "text-slate-500", bg: "bg-slate-100" };
+  if (bs >= 200) return { label: "High", color: "text-rose-700", bg: "bg-rose-50 border border-rose-200" };
+  if (bs >= 140) return { label: "Elevated", color: "text-amber-700", bg: "bg-amber-50 border border-amber-200" };
+  return { label: "Normal", color: "text-emerald-700", bg: "bg-emerald-50 border border-emerald-200" };
 }
 
 export function VitalSignsPage() {
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [showTrend, setShowTrend] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [vitals, setVitals] = useState<VitalRow[]>([]);
@@ -56,7 +94,6 @@ export function VitalSignsPage() {
   useEffect(() => {
     const fetchVitals = async () => {
       setIsLoading(true);
-      console.log("[VitalSigns] Fetching list");
       const data = await vitalSignsService.getAll();
       const transformed: VitalRow[] = data.map((v: VitalApiRow) => ({
         ...v,
@@ -66,15 +103,18 @@ export function VitalSignsPage() {
         patientId: v.patientId || (typeof v.patient === "object" ? v.patient?.id : ""),
       }));
       setVitals(transformed);
-      console.log("[VitalSigns] List loaded", { count: transformed.length });
       setIsLoading(false);
     };
     fetchVitals();
   }, []);
 
-  const filtered = vitals.filter(v =>
-    `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return vitals.filter(v => {
+      const matchQuery = `${v.patient} ${v.id} ${v.consultId}`.toLowerCase().includes(search.toLowerCase());
+      const matchDate = !dateFilter || v.date.includes(dateFilter);
+      return matchQuery && matchDate;
+    });
+  }, [vitals, search, dateFilter]);
 
   const hasSelectablePatients = filtered.some(v => !!v.patientId);
 
@@ -102,21 +142,36 @@ export function VitalSignsPage() {
         return;
       }
 
-      console.log("[VitalSigns] Fetching BP trend", { patientId: selectedPatientId });
       const trend = await vitalSignsService.getBPTrend(selectedPatientId);
       setBpTrendData(trend);
-      console.log("[VitalSigns] BP trend loaded", {
-        patientId: selectedPatientId,
-        points: trend.length,
-      });
     };
 
     fetchTrend();
   }, [selectedPatientId]);
 
+  // Aggregate clinical telemetry
+  const telemetry = useMemo(() => {
+    if (!vitals.length) {
+      return { avgBP: "120/80", avgPulse: 75, avgTemp: 36.8, highBPCount: 0 };
+    }
+    const count = vitals.length;
+    const sysSum = vitals.reduce((acc, v) => acc + (v.bpSystolic || 0), 0);
+    const diaSum = vitals.reduce((acc, v) => acc + (v.bpDiastolic || 0), 0);
+    const pulseSum = vitals.reduce((acc, v) => acc + (v.pulseRate || 0), 0);
+    const tempSum = vitals.reduce((acc, v) => acc + (v.temp || 0), 0);
+    const highBPCount = vitals.filter(v => v.bpSystolic >= 140 || v.bpDiastolic >= 90).length;
+
+    return {
+      avgBP: `${Math.round(sysSum / count)}/${Math.round(diaSum / count)}`,
+      avgPulse: Math.round(pulseSum / count),
+      avgTemp: (tempSum / count).toFixed(1),
+      highBPCount,
+    };
+  }, [vitals]);
+
   const trendDateRange =
     bpTrendData.length > 0
-      ? `${new Date(bpTrendData[0].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} - ${new Date(bpTrendData[bpTrendData.length - 1].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+      ? `${new Date(bpTrendData[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(bpTrendData[bpTrendData.length - 1].date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
       : "No trend data available";
 
   if (isLoading) {
@@ -124,204 +179,382 @@ export function VitalSignsPage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in-up">
+    <div className="p-3.5 sm:p-5 lg:p-7 space-y-5 max-w-7xl mx-auto">
+      {/* Top Clinical Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Vital Signs</h1>
-          <p className="text-xs sm:text-sm text-gray-500">Monitor and track patient vital signs</p>
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
+              <Activity className="w-5 h-5" />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Vital Signs & Triage Telemetry
+            </h1>
+          </div>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">
+            Real-time biometric monitoring, blood pressure trends, and metabolic screening
+          </p>
         </div>
-        <button
-          disabled={!hasSelectablePatients}
-          onClick={() => setShowTrend(!showTrend)}
-          className={`flex items-center justify-center gap-2 border px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-semibold ${hasSelectablePatients ? "border-blue-300 text-blue-600 hover:bg-blue-50" : "border-gray-200 text-gray-400 cursor-not-allowed"}`}
-        >
-          <TrendingUp className="w-4 h-4" /> {showTrend ? "Hide" : "Show"} Trend
-        </button>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            disabled={!hasSelectablePatients}
+            onClick={() => setShowTrend(!showTrend)}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs ${showTrend
+              ? "bg-slate-900 text-white"
+              : "bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            {showTrend ? "Hide Longitudinal Curve" : "View BP Longitudinal Curve"}
+          </button>
+        </div>
       </div>
 
-      {showTrend && (
-        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
-          {!hasSelectablePatients ? (
-            <div className="h-[180px] flex flex-col items-center justify-center text-center px-4">
-              <h3 className="text-gray-800 text-sm sm:text-base font-semibold mb-1">Select a patient to view trend</h3>
-              <p className="text-gray-500 text-xs sm:text-sm">No patient records match your current search. Clear or adjust the search to view trend data.</p>
+      {/* Aggregate Telemetry Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Average BP</span>
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+              <Heart className="w-4 h-4" />
             </div>
-          ) : (
-            <>
-              <h3 className="text-gray-800 mb-1 text-sm sm:text-base font-semibold">{selectedPatientName || "No Patient Selected"} - Blood Pressure Trend</h3>
-              <p className="text-gray-400 mb-3 sm:mb-4 text-xs sm:text-sm">{trendDateRange}</p>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={bpTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} />
-                  <YAxis style={{ fontSize: "0.65rem" }} tick={{ fill: "#6B7280" }} domain={[60, 180]} width={30} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: "0.7rem" }} />
-                  <Line type="monotone" dataKey="systolic" stroke="#EF4444" strokeWidth={2} name="Systolic" dot={{ fill: "#EF4444" }} />
-                  <Line type="monotone" dataKey="diastolic" stroke="#3B82F6" strokeWidth={2} name="Diastolic" dot={{ fill: "#3B82F6" }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </>
-          )}
+          </div>
+          <p className="text-2xl font-black text-slate-900">{telemetry.avgBP}</p>
+          <span className="text-[11px] text-slate-400 font-medium">mmHg clinic average</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Average Pulse</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+              <Activity className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900">{telemetry.avgPulse} <span className="text-xs font-normal text-slate-400">bpm</span></p>
+          <span className="text-[11px] text-slate-400 font-medium">Resting heart rate</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Average Temp</span>
+            <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
+              <Thermometer className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900">{telemetry.avgTemp} <span className="text-xs font-normal text-slate-400">°C</span></p>
+          <span className="text-[11px] text-slate-400 font-medium">Normothermic</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">High BP Alerts</span>
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-rose-600">{telemetry.highBPCount}</p>
+          <span className="text-[11px] text-rose-600 font-semibold">Requiring triage follow-up</span>
+        </div>
+      </div>
+
+      {/* Expandable Longitudinal Trend Chart */}
+      {showTrend && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm animate-scale-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-slate-900 font-bold text-base sm:text-lg">
+                  {selectedPatientName || "Patient"} &mdash; BP Progression
+                </h3>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                  {trendDateRange}
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs mt-0.5">
+                Systolic vs. Diastolic pressure variations plotted across recent health evaluations
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-rose-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Systolic
+              </span>
+              <span className="flex items-center gap-1.5 text-sky-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Diastolic
+              </span>
+            </div>
+          </div>
+
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={bpTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="vtlSysGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.01} />
+                  </linearGradient>
+                  <linearGradient id="vtlDiaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
+                <YAxis domain={[50, 190]} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontSize: "11px",
+                  }}
+                />
+                {/* Clinical standard threshold lines */}
+                <ReferenceLine y={140} stroke="#f43f5e" strokeDasharray="3 3" strokeOpacity={0.4} label={{ value: "Stage 2 (140)", fill: "#f43f5e", fontSize: 9 }} />
+                <ReferenceLine y={90} stroke="#0ea5e9" strokeDasharray="3 3" strokeOpacity={0.4} label={{ value: "Diastolic Threshold (90)", fill: "#0ea5e9", fontSize: 9 }} />
+                <Area type="monotone" dataKey="systolic" name="Systolic (mmHg)" stroke="#f43f5e" strokeWidth={2.5} fill="url(#vtlSysGrad)" />
+                <Area type="monotone" dataKey="diastolic" name="Diastolic (mmHg)" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#vtlDiaGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by patient name or consultation ID..."
+            placeholder="Search by patient name, vitals ID, or consultation..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
           />
         </div>
-        <input type="date" className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 focus:outline-none text-xs sm:text-sm" />
+
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+          />
+          {dateFilter && (
+            <button
+              onClick={() => setDateFilter("")}
+              className="text-xs text-sky-600 hover:underline px-1"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-        {[
-          { label: "Avg Blood Pressure", value: "136/89", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
-          { label: "Avg Pulse Rate", value: "85 bpm", icon: Activity, color: "text-orange-500", bg: "bg-orange-50" },
-          { label: "Avg Temperature", value: "37.2 °C", icon: Thermometer, color: "text-yellow-500", bg: "bg-yellow-50" },
-          { label: "Avg Blood Sugar", value: "145 mg/dL", icon: Activity, color: "text-violet-500", bg: "bg-violet-50" },
-        ].map((card, index) => (
-          <div 
-            key={card.label} 
-            className={`${card.bg} rounded-xl p-3 sm:p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up`}
-            style={{ animationDelay: `${index * 75}ms` }}
-          >
-            <div className="flex items-center gap-1 sm:gap-2 mb-1">
-              <card.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${card.color}`} />
-              <p className="text-gray-500 text-[0.6rem] sm:text-xs">{card.label}</p>
-            </div>
-            <p className={`${card.color} text-base sm:text-xl font-bold`}>{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {/* Vitals Data Table (Desktop) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {["Record ID", "Patient", "Date", "BP (mmHg)", "Pulse", "Resp. Rate", "Temp (°C)", "Blood Sugar", "Weight", "Height", "BMI"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-gray-500 whitespace-nowrap text-xs font-semibold uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
+              <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-4 py-3.5">Record ID</th>
+                <th className="px-4 py-3.5">Patient Details</th>
+                <th className="px-4 py-3.5">Evaluation Date</th>
+                <th className="px-4 py-3.5">Blood Pressure</th>
+                <th className="px-4 py-3.5">Heart Rate</th>
+                <th className="px-4 py-3.5">Resp. / Temp</th>
+                <th className="px-4 py-3.5">Blood Glucose</th>
+                <th className="px-4 py-3.5">Weight / BMI</th>
+                <th className="px-4 py-3.5 text-right">Trend</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((v, i) => {
-                const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
-                const bs = getBSStatus(v.bloodSugar);
-                return (
-                  <tr
-                    key={v.id}
-                    onClick={() => {
-                      if (v.patientId) {
-                        setSelectedPatientId(v.patientId);
-                        setSelectedPatientName(v.patient as string);
-                        setShowTrend(true);
-                      }
-                    }}
-                    className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/30"} ${selectedPatientId === v.patientId ? "bg-blue-50" : ""}`}
-                  >
-                    <td className="px-4 py-3">
-                      <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
-                      <p className="text-gray-400 text-[0.65rem]" title={v.consultId}>{formatEntityId(v.consultId, "CON")}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-800 text-sm font-medium">{v.patient}</td>
-                    <td className="px-4 py-3 text-gray-500 text-sm">{v.date}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-800 text-sm font-semibold">{v.bpSystolic}/{v.bpDiastolic}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[0.65rem] font-medium ${bp.bg} ${bp.color}`}>{bp.label}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">{v.pulseRate} bpm</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">{v.respRate}/min</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">{v.temp}°C</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-800 text-sm font-semibold">{v.bloodSugar}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[0.65rem] font-medium ${bs.bg} ${bs.color}`}>{bs.label}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">{v.weight} kg</td>
-                    <td className="px-4 py-3 text-gray-700 text-sm">{v.height} cm</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-sm font-semibold ${v.bmi >= 25 ? "text-orange-600" : "text-green-600"}`}>{v.bmi}</span>
-                    </td>
-                  </tr>
-                );
-              })}
+            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                    <Activity className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">No vital sign records found</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Try clearing the search query or date filter</p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((v, i) => {
+                  const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
+                  const bs = getBSStatus(v.bloodSugar);
+                  const isSelected = selectedPatientId === v.patientId;
+
+                  return (
+                    <tr
+                      key={v.id}
+                      onClick={() => {
+                        if (v.patientId) {
+                          setSelectedPatientId(v.patientId);
+                          setSelectedPatientName(v.patient as string);
+                          setShowTrend(true);
+                        }
+                      }}
+                      className={`hover:bg-sky-50/40 transition-colors cursor-pointer group ${isSelected ? "bg-sky-50/60" : ""
+                        }`}
+                    >
+                      <td className="px-4 py-3.5">
+                        <span className="font-mono text-xs font-bold text-sky-600" title={v.id}>
+                          {formatEntityId(v.id, "VTL")}
+                        </span>
+                        {v.consultId && (
+                          <p className="text-[11px] text-slate-400 font-mono" title={v.consultId}>
+                            {formatEntityId(v.consultId, "CON")}
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {v.patient?.[0]}
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+                              {v.patient}
+                            </span>
+                            {v.patientId && (
+                              <Link
+                                to={`/patients/${v.patientId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="block text-[11px] text-slate-400 hover:text-sky-600"
+                              >
+                                View Patient Record
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-600 font-medium">
+                        {v.date}
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">
+                            {v.bpSystolic}/{v.bpDiastolic}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${bp.bg} ${bp.color}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${bp.dot}`} />
+                            {bp.label}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-700 font-semibold">
+                        {v.pulseRate} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-600 font-medium">
+                        <span>{v.respRate}/min</span>
+                        <span className="text-slate-300 mx-1.5">&bull;</span>
+                        <span>{v.temp}°C</span>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900">{v.bloodSugar || "—"}</span>
+                          {v.bloodSugar ? (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${bs.bg} ${bs.color}`}>
+                              {bs.label}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-700 font-medium">
+                        <div>
+                          <span>{v.weight} kg</span>
+                          <span className="text-slate-300 mx-1.5">&bull;</span>
+                          <span className={`font-bold ${v.bmi >= 25 ? "text-amber-600" : "text-emerald-600"}`}>
+                            BMI {v.bmi}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-right">
+                        <button
+                          className="p-1.5 text-slate-400 group-hover:text-sky-600 rounded-lg transition-colors"
+                          title="View patient curve"
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
-        {filtered.map((v) => {
-          const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
-          const bs = getBSStatus(v.bloodSugar);
-          return (
-            <div
-              key={v.id}
-              onClick={() => {
-                if (v.patientId) {
-                  setSelectedPatientId(v.patientId);
-                  setSelectedPatientName(v.patient as string);
-                  setShowTrend(true);
-                }
-              }}
-              className={`bg-white rounded-xl border border-gray-200 p-4 cursor-pointer ${selectedPatientId === v.patientId ? "ring-2 ring-blue-200" : ""}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <span className="text-blue-600 text-xs font-semibold" title={v.id}>{formatEntityId(v.id, "VTL")}</span>
-                  <p className="text-gray-800 text-sm font-semibold mt-0.5">{v.patient}</p>
-                  <p className="text-gray-400 text-xs">{v.date}</p>
-                </div>
-                <span className="text-gray-400 text-[0.65rem]" title={v.consultId}>{formatEntityId(v.consultId, "CON")}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-red-50 rounded-lg p-2">
-                  <p className="text-gray-500 text-[0.65rem]">Blood Pressure</p>
-                  <div className="flex items-center gap-1">
-                    <span className="text-red-600 text-sm font-bold">{v.bpSystolic}/{v.bpDiastolic}</span>
-                    <span className={`px-1 py-0.5 rounded text-[0.55rem] font-medium ${bp.bg} ${bp.color}`}>{bp.label}</span>
-                  </div>
-                </div>
-                <div className="bg-orange-50 rounded-lg p-2">
-                  <p className="text-gray-500 text-[0.65rem]">Pulse Rate</p>
-                  <span className="text-orange-600 text-sm font-bold">{v.pulseRate} bpm</span>
-                </div>
-                <div className="bg-yellow-50 rounded-lg p-2">
-                  <p className="text-gray-500 text-[0.65rem]">Temperature</p>
-                  <span className="text-yellow-600 text-sm font-bold">{v.temp}°C</span>
-                </div>
-                <div className="bg-violet-50 rounded-lg p-2">
-                  <p className="text-gray-500 text-[0.65rem]">Blood Sugar</p>
-                  <div className="flex items-center gap-1">
-                    <span className="text-violet-600 text-sm font-bold">{v.bloodSugar}</span>
-                    <span className={`px-1 py-0.5 rounded text-[0.55rem] font-medium ${bs.bg} ${bs.color}`}>{bs.label}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between text-xs border-t border-gray-50 pt-2">
-                <span className="text-gray-400">Weight: <span className="text-gray-600 font-medium">{v.weight} kg</span></span>
-                <span className="text-gray-400">Height: <span className="text-gray-600 font-medium">{v.height} cm</span></span>
-                <span className="text-gray-400">BMI: <span className={`font-semibold ${v.bmi >= 25 ? "text-orange-600" : "text-green-600"}`}>{v.bmi}</span></span>
-              </div>
+        {/* Mobile View */}
+        <div className="lg:hidden divide-y divide-slate-100">
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 text-xs">
+              No vital sign records found
             </div>
-          );
-        })}
+          ) : (
+            filtered.map((v) => {
+              const bp = getBPStatus(v.bpSystolic, v.bpDiastolic);
+              const bs = getBSStatus(v.bloodSugar);
+
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => {
+                    if (v.patientId) {
+                      setSelectedPatientId(v.patientId);
+                      setSelectedPatientName(v.patient as string);
+                      setShowTrend(true);
+                    }
+                  }}
+                  className="p-4 hover:bg-slate-50/60 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-mono font-bold text-sky-600">
+                        {formatEntityId(v.id, "VTL")}
+                      </span>
+                      <p className="font-bold text-slate-900 text-sm mt-0.5">{v.patient}</p>
+                      <p className="text-[11px] text-slate-400">{v.date}</p>
+                    </div>
+
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${bp.bg} ${bp.color}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${bp.dot}`} />
+                      {bp.label}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-400 text-[10px] block">Blood Pressure</span>
+                      <span className="font-bold text-slate-900">{v.bpSystolic}/{v.bpDiastolic} mmHg</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-400 text-[10px] block">Heart Rate</span>
+                      <span className="font-bold text-slate-900">{v.pulseRate} bpm</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-400 text-[10px] block">Temp / Resp</span>
+                      <span className="font-bold text-slate-900">{v.temp}°C &bull; {v.respRate}/m</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-400 text-[10px] block">Weight / BMI</span>
+                      <span className="font-bold text-slate-900">{v.weight}kg &bull; BMI {v.bmi}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,27 @@
-import { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit2, Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit2,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Users,
+  Heart,
+  MapPin,
+  Phone,
+  Calendar,
+  UserCheck,
+  AlertCircle,
+  FileText,
+  Stethoscope,
+  ExternalLink,
+  ShieldCheck,
+  RefreshCw
+} from "lucide-react";
+import { useNavigate, Link } from "react-router";
 import { patientService } from "../services/patientService";
 import { barangayService } from "../services";
 import type { Patient } from "../models";
@@ -14,6 +36,13 @@ const GENDERS = ["", "Male", "Female"] as const;
 const CIVIL_STATUSES = ["", "Single", "Married", "Widowed", "Divorced", "Separated"] as const;
 const PATIENT_QUERY_LIMIT = 100;
 const PATIENT_MAX_PAGES = 20;
+
+const OLONGAPO_BARANGAYS = [
+  "Asinan", "Banicain", "Barretto", "East Bajac-Bajac", "East Tapinac",
+  "Gordon Heights", "Kalaklan", "Mabayuan", "New Cabalan", "New Ilalim",
+  "New Kabalan", "New Kalalake", "Old Cabalan", "Pag-asa", "Santa Rita",
+  "West Bajac-Bajac", "West Tapinac"
+];
 
 function formatApiError(err: unknown): string {
   const anyErr = err as any;
@@ -66,6 +95,20 @@ function toDateInputValue(value: string | undefined): string {
   return value.includes("T") ? value.slice(0, 10) : value;
 }
 
+function calcAge(dob: string | undefined): string {
+  if (!dob) return "—";
+  try {
+    const birth = new Date(dob);
+    const now = new Date();
+    const years = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    const age = m < 0 || (m === 0 && now.getDate() < birth.getDate()) ? years - 1 : years;
+    return age >= 0 ? `${age}y` : "—";
+  } catch {
+    return "—";
+  }
+}
+
 function PatientModal(
   {
     patient,
@@ -79,13 +122,13 @@ function PatientModal(
     onSave: (mode: PatientModalMode, form: Patient) => Promise<boolean>;
   }
 ) {
+  const navigate = useNavigate();
   const isView = mode === "view";
   const title =
-    mode === "add" ? "Register New Patient" : mode === "edit" ? "Edit Patient" : "Patient Details";
+    mode === "add" ? "Register New Patient" : mode === "edit" ? "Edit Patient Record" : "Patient Clinical Overview";
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
   const [barangays, setBarangays] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoadingBarangays, setIsLoadingBarangays] = useState(mode !== 'view');
 
@@ -125,7 +168,6 @@ function PatientModal(
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Only fetch when modal is open in add/edit modes.
       if (isView) return;
       if (barangays.length) return;
       setIsLoadingBarangays(true);
@@ -135,7 +177,8 @@ function PatientModal(
           setBarangays(list.map((b) => ({ id: b.id, name: b.name })));
         }
       } catch {
-        // Keep barangay as free text if fetching fails.
+        // Fallback to static list
+        setBarangays(OLONGAPO_BARANGAYS.map((name, i) => ({ id: String(i), name })));
       } finally {
         if (!cancelled) setIsLoadingBarangays(false);
       }
@@ -165,12 +208,11 @@ function PatientModal(
     try {
       const ok = await onSave(mode, {
         ...form,
-        // Field is required by backend/DB but removed from UI.
         emergencyContact: form.emergencyContact?.trim() ? form.emergencyContact : "N/A",
       });
       setIsSaving(false);
       if (ok) onClose();
-      else setSaveError("Failed to save patient. Check required fields and your login session.");
+      else setSaveError("Failed to save patient. Check required fields and session.");
     } catch (e) {
       setIsSaving(false);
       setSaveError(formatApiError(e));
@@ -178,207 +220,369 @@ function PatientModal(
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-4 animate-fade-in">
-      <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
-          <h2 className="text-gray-900 font-bold text-base sm:text-lg">{title}</h2>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-4 animate-fade-in">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto animate-scale-in border border-slate-100 flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-slate-900 font-bold text-base sm:text-lg">{title}</h2>
+              <p className="text-slate-500 text-xs mt-0.5">
+                {isView ? "Viewing registered clinical record" : "Ensure all statutory demographic fields are accurate"}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200"
+            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-all duration-200"
             disabled={isSaving}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-          {/* Patient Info */}
-          <div>
-            <h3 className="text-gray-600 mb-2.5 sm:mb-3 flex items-center gap-2 text-[0.7rem] sm:text-xs font-semibold uppercase tracking-wide">
-              <span className="w-4 sm:w-5 h-0.5 bg-blue-500 inline-block" /> Personal Information
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {[
-                { label: "First Name", key: "firstName" },
-                { label: "Last Name", key: "lastName" },
-                { label: "Date of Birth", key: "dob", type: "date" },
-                { label: "Gender", key: "gender" },
-                { label: "Blood Type", key: "bloodType" },
-                { label: "Civil Status", key: "civilStatus" },
-              ].map(({ label, key, type }) => (
-                <div key={key}>
-                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">{label}</label>
-                  {isView ? (
-                    <p className="text-gray-800 py-2 border-b border-gray-100 text-sm font-medium">
-                      {(form as any)[key] || "—"}
-                    </p>
-                  ) : key === "gender" ? (
-                    <select
-                      value={form.gender || ""}
-                      onChange={(e) => setForm({ ...form, gender: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving}
-                    >
-                      {GENDERS.map((g) => (
-                        <option key={g} value={g}>
-                          {g || "Select gender"}
-                        </option>
-                      ))}
-                    </select>
-                  ) : key === "bloodType" ? (
-                    <select
-                      value={form.bloodType || ""}
-                      onChange={(e) => setForm({ ...form, bloodType: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving}
-                    >
-                      {BLOOD_TYPES.map((bt) => (
-                        <option key={bt} value={bt}>
-                          {bt || "Select blood type"}
-                        </option>
-                      ))}
-                    </select>
-                  ) : key === "civilStatus" ? (
-                    <select
-                      value={(form.civilStatus as any) || ""}
-                      onChange={(e) => setForm({ ...form, civilStatus: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving}
-                    >
-                      {CIVIL_STATUSES.map((cs) => (
-                        <option key={cs} value={cs}>
-                          {cs || "Select civil status"}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={type || "text"}
-                      value={type === "date" ? toDateInputValue((form as any)[key]) : (form as any)[key] || ""}
-                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Contact Details */}
-          <div>
-            <h3 className="text-gray-600 mb-2.5 sm:mb-3 flex items-center gap-2 text-[0.7rem] sm:text-xs font-semibold uppercase tracking-wide">
-              <span className="w-4 sm:w-5 h-0.5 bg-teal-500 inline-block" /> Contact Details
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {[
-                { label: "Contact Number", key: "contact" },
-                { label: "Barangay", key: "barangay" },
-                { label: "Address", key: "address" },
-                { label: "Emergency Contact No.", key: "emergencyContactNumber" },
-                { label: "PhilHealth No.", key: "philhealth" },
-              ].map(({ label, key }) => (
-                <div key={key}>
-                  <label className="block text-gray-500 mb-1 text-[0.65rem] sm:text-xs">{label}</label>
-                  {isView ? (
-                    <p className="text-gray-800 py-2 border-b border-gray-100 text-sm font-medium">
-                      {(form as any)[key] || "—"}
-                    </p>
-                  ) : key === 'barangay' && (isLoadingBarangays || barangays.length) ? (
-                    <select
-                      value={form.barangay || ""}
-                      onChange={(e) => setForm({ ...form, barangay: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving || isLoadingBarangays}
-                    >
-                      <option value="">
-                        {isLoadingBarangays ? 'Loading barangays…' : 'Select barangay (optional)'}
-                      </option>
-                      {barangays.map((b) => (
-                        <option key={b.id} value={b.name}>
-                          {b.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={(form as any)[key] || ""}
-                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-                      disabled={isSaving}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Medical History (view only) */}
-          {isView && (
-            <div>
-              <h3 className="text-gray-600 mb-2.5 sm:mb-3 flex items-center gap-2 text-[0.7rem] sm:text-xs font-semibold uppercase tracking-wide">
-                <span className="w-4 sm:w-5 h-0.5 bg-violet-500 inline-block" /> Medical History
+        {/* Modal Body */}
+        <div className="p-5 sm:p-6 space-y-6 flex-1">
+          {/* Section: Personal Information */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-sky-500" />
+                Personal Information
               </h3>
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-500 text-xs sm:text-sm">Hypertension</span>
-                  <span className="text-green-600 text-xs sm:text-sm font-medium">Active</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-500 text-xs sm:text-sm">Type 2 Diabetes</span>
-                  <span className="text-gray-400 text-xs sm:text-sm font-medium">Resolved</span>
-                </div>
+              {!isView && <span className="text-[11px] text-slate-400">* Required fields</span>}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  First Name {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.firstName || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. Maria"
+                    value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Last Name {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.lastName || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. Santos"
+                    value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Date of Birth {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.dob || "—"} {form.dob && `(${calcAge(form.dob)})`}
+                  </p>
+                ) : (
+                  <input
+                    type="date"
+                    value={toDateInputValue(form.dob)}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Gender {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.gender || "—"}
+                  </p>
+                ) : (
+                  <select
+                    value={form.gender || ""}
+                    onChange={(e) => setForm({ ...form, gender: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  >
+                    {GENDERS.map((g) => (
+                      <option key={g} value={g}>
+                        {g || "Select gender"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">Blood Type</label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.bloodType || "—"}
+                  </p>
+                ) : (
+                  <select
+                    value={form.bloodType || ""}
+                    onChange={(e) => setForm({ ...form, bloodType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  >
+                    {BLOOD_TYPES.map((bt) => (
+                      <option key={bt} value={bt}>
+                        {bt || "Select blood type (optional)"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">Civil Status</label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.civilStatus || "—"}
+                  </p>
+                ) : (
+                  <select
+                    value={(form.civilStatus as any) || ""}
+                    onChange={(e) => setForm({ ...form, civilStatus: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  >
+                    {CIVIL_STATUSES.map((cs) => (
+                      <option key={cs} value={cs}>
+                        {cs || "Select civil status"}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Section: Contact & Location */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-teal-500" />
+                Contact & Address
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Contact Number {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.contact || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="0917-123-4567"
+                    value={form.contact}
+                    onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Barangay (Olongapo City)
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.barangay || "—"}
+                  </p>
+                ) : (
+                  <select
+                    value={form.barangay || ""}
+                    onChange={(e) => setForm({ ...form, barangay: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving || isLoadingBarangays}
+                  >
+                    <option value="">
+                      {isLoadingBarangays ? "Loading barangays..." : "Select Barangay"}
+                    </option>
+                    {(barangays.length ? barangays.map(b => b.name) : OLONGAPO_BARANGAYS).map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Street Address {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.address || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="House / Unit No., Street, Purok"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Health & Emergency Contact */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                Emergency Contact & PhilHealth
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  Emergency Contact Number {!isView && <span className="text-rose-500">*</span>}
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.emergencyContactNumber || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="0918-765-4321"
+                    value={form.emergencyContactNumber}
+                    onChange={(e) => setForm({ ...form, emergencyContactNumber: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-xs font-semibold mb-1">
+                  PhilHealth Identification No. (PIN)
+                </label>
+                {isView ? (
+                  <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                    {form.philhealth || "—"}
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="XX-XXXXXXXXX-X"
+                    value={form.philhealth}
+                    onChange={(e) => setForm({ ...form, philhealth: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+                    disabled={isSaving}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
+        {/* Error notification */}
         {!isView && saveError && (
-          <div className="px-4 sm:px-6 pb-0">
-            <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs sm:text-sm">
-              {saveError}
+          <div className="px-5 sm:px-6 pb-2">
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{saveError}</span>
             </div>
           </div>
         )}
 
-        {!isView && (
-          <div className="p-4 sm:p-6 border-t border-gray-100 flex gap-3 justify-end bg-gray-50/50">
+        {/* Modal Footer */}
+        <div className="p-4 sm:p-6 border-t border-slate-100 flex flex-wrap gap-2.5 justify-between items-center bg-slate-50/60 rounded-b-2xl">
+          {isView && patient?.id ? (
+            <button
+              onClick={() => {
+                onClose();
+                navigate(`/patients/${patient.id}`);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs sm:text-sm font-semibold border border-sky-200 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open Full Clinical Profile
+            </button>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex gap-2 ml-auto">
             <button
               onClick={onClose}
-              className="px-4 sm:px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 transition-all duration-200 hover:border-gray-300 text-xs sm:text-sm"
+              className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors text-xs sm:text-sm font-medium"
               disabled={isSaving}
             >
-              Cancel
+              {isView ? "Close" : "Cancel"}
             </button>
-            <button
-              onClick={handleSubmit}
-              className="px-4 sm:px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg press-effect text-xs sm:text-sm font-semibold"
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving…" : mode === "add" ? "Register Patient" : "Save Changes"}
-            </button>
+            {!isView && (
+              <button
+                onClick={handleSubmit}
+                className="px-5 py-2 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-bold flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : mode === "add" ? "Register Patient" : "Save Changes"}
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {isSaving && (
         <StatusModal
           open={isSaving}
           variant="loading"
-          title="Saving patient..."
-          message="Syncing patient data"
+          title="Syncing Patient Record..."
+          message="Validating demographic data"
         />
       )}
     </div>
   );
-
 }
 
-
 export function PatientsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [barangayFilter, setBarangayFilter] = useState("All Barangays");
+  const [statusFilter, setStatusFilter] = useState("All Status");
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; patient?: Patient } | null>(null);
   const [successModal, setSuccessModal] = useState<{ title: string; message?: string } | null>(null);
@@ -386,44 +590,27 @@ export function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const pageSize = 10;
 
+  const fetchPatients = async () => {
+    setIsLoading(true);
+    const all: any[] = [];
+
+    for (let page = 1; page <= PATIENT_MAX_PAGES; page++) {
+      const chunk = await patientService.getAll({ page, limit: PATIENT_QUERY_LIMIT });
+      all.push(...chunk);
+      if (chunk.length < PATIENT_QUERY_LIMIT) break;
+    }
+
+    const normalized = all.map((p: any) => normalizePatientApi(p));
+    setPatients(normalized);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const fetchPatients = async () => {
-      setIsLoading(true);
-      console.log("[Patients] Fetching paged data", {
-        maxPages: PATIENT_MAX_PAGES,
-        pageLimit: PATIENT_QUERY_LIMIT,
-      });
-      const all: any[] = [];
-
-      for (let page = 1; page <= PATIENT_MAX_PAGES; page++) {
-        const chunk = await patientService.getAll({ page, limit: PATIENT_QUERY_LIMIT });
-        all.push(...chunk);
-        console.log("[Patients] Page fetched", {
-          page,
-          pageCount: chunk.length,
-          accumulated: all.length,
-        });
-
-        if (chunk.length < PATIENT_QUERY_LIMIT) {
-          break;
-        }
-      }
-
-      const normalized = all.map((p: any) => normalizePatientApi(p));
-      setPatients(normalized);
-      console.log("[Patients] List loaded", { count: normalized.length });
-      setIsLoading(false);
-    };
     fetchPatients();
   }, []);
 
   const handleSavePatient = async (mode: PatientModalMode, form: Patient): Promise<boolean> => {
     if (mode === 'add') {
-      console.log("[Patients] Save requested", {
-        mode,
-        firstName: form.firstName,
-        lastName: form.lastName,
-      });
       const created = await patientService.create({
         firstName: form.firstName,
         lastName: form.lastName,
@@ -441,21 +628,16 @@ export function PatientsPage() {
       } as any);
 
       const normalized = normalizePatientApi(created as any);
-      console.log("[Patients] Create response", normalized);
       setPatients((prev) => [normalized, ...prev]);
       const createdLabel = `${normalized.firstName} ${normalized.lastName}`.trim() || normalized.id || "Patient";
       setSuccessModal({
         title: "Patient Registered",
-        message: `${createdLabel} has been added successfully.`,
+        message: `${createdLabel} has been successfully added to the city registry.`,
       });
       return true;
     }
 
     if (mode === 'edit' && form.id) {
-      console.log("[Patients] Save requested", {
-        mode,
-        patientId: form.id,
-      });
       const updated = await patientService.update(form.id, {
         firstName: form.firstName,
         lastName: form.lastName,
@@ -473,12 +655,11 @@ export function PatientsPage() {
       } as any);
 
       const normalized = normalizePatientApi(updated as any);
-      console.log("[Patients] Update response", normalized);
       setPatients((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
       const updatedLabel = `${normalized.firstName} ${normalized.lastName}`.trim() || normalized.id || "Patient";
       setSuccessModal({
-        title: "Patient Updated",
-        message: `${updatedLabel} has been updated successfully.`,
+        title: "Patient Record Updated",
+        message: `${updatedLabel}'s records have been updated successfully.`,
       });
       return true;
     }
@@ -486,9 +667,33 @@ export function PatientsPage() {
     return false;
   };
 
-  const filtered = patients.filter(p =>
-    `${p.firstName} ${p.lastName} ${p.id} ${p.barangay}`.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter pipeline
+  const filtered = useMemo(() => {
+    return patients.filter((p) => {
+      const matchesSearch = `${p.firstName} ${p.lastName} ${p.id} ${p.barangay} ${p.philhealth} ${p.contact}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      const matchesBarangay =
+        barangayFilter === "All Barangays" ||
+        p.barangay?.toLowerCase() === barangayFilter.toLowerCase();
+
+      const matchesStatus =
+        statusFilter === "All Status" ||
+        p.status?.toLowerCase() === statusFilter.toLowerCase();
+
+      return matchesSearch && matchesBarangay && matchesStatus;
+    });
+  }, [patients, search, barangayFilter, statusFilter]);
+
+  // Statistical summary metrics
+  const stats = useMemo(() => {
+    const total = patients.length;
+    const active = patients.filter((p) => p.status === "Active").length;
+    const female = patients.filter((p) => p.gender === "Female").length;
+    const male = patients.filter((p) => p.gender === "Male").length;
+    return { total, active, female, male };
+  }, [patients]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -498,117 +703,258 @@ export function PatientsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, barangayFilter, statusFilter]);
 
   if (isLoading) {
     return <PatientsSkeleton />;
   }
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in">
+    <div className="p-3.5 sm:p-5 lg:p-7 space-y-5 max-w-7xl mx-auto">
+      {/* Top Clinical Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-gray-900 text-lg sm:text-xl lg:text-2xl font-bold">Patients</h1>
-          <p className="text-gray-500 text-xs sm:text-sm">Manage and view patient records</p>
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <Users className="w-5 h-5" />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Patient Registry
+            </h1>
+          </div>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">
+            Master demographic directory and electronic health index for Olongapo City
+          </p>
         </div>
-        <button
-          onClick={() => setModal({ mode: "add" })}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 press-effect text-xs sm:text-sm font-semibold"
-        >
-          <Plus className="w-4 h-4" /> Register Patient
-        </button>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center shadow-card animate-fade-in-up animation-delay-100">
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px] group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
-          <input
-            type="text"
-            placeholder="Search by name, ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 text-xs sm:text-sm"
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <select className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 transition-all duration-200 cursor-pointer text-xs sm:text-sm">
-            <option>All Barangays</option>
-            <option>Sta. Rita</option>
-            <option>Gordon Heights</option>
-            <option>New Ilalim</option>
-            <option>Kalaklan</option>
-          </select>
-          <select className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 transition-all duration-200 cursor-pointer text-xs sm:text-sm">
-            <option>All Status</option>
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
-          <button className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-xs sm:text-sm">
-            <Filter className="w-4 h-4" /> <span className="hidden sm:inline">Filters</span>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setModal({ mode: "add" })}
+            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            Register Patient
           </button>
         </div>
       </div>
 
-      {/* Table - Mobile Card View */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-card animate-fade-in-up animation-delay-200">
-        {/* Desktop Table View */}
+      {/* Demographic Summary Metrics Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-sky-50 text-sky-600">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Patients</p>
+            <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.total.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active in Care</p>
+            <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.active.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600">
+            <Heart className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Female Patients</p>
+            <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.female.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Male Patients</p>
+            <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.male.toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filter Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by patient name, ID, contact, PhilHealth..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
+          />
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+          {/* Barangay filter */}
+          <select
+            value={barangayFilter}
+            onChange={(e) => setBarangayFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+          >
+            <option value="All Barangays">All Barangays (17)</option>
+            {OLONGAPO_BARANGAYS.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+          >
+            <option value="All Status">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+
+          {(search || barangayFilter !== "All Barangays" || statusFilter !== "All Status") && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setBarangayFilter("All Barangays");
+                setStatusFilter("All Status");
+              }}
+              className="text-xs text-sky-600 hover:text-sky-700 font-semibold px-2 py-1 underline"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Patients Data Table & Mobile Cards */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        {/* Desktop View */}
         <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-left">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
-                {["Patient ID", "Name", "Date of Birth", "Gender", "Blood Type", "Barangay", "Contact", "Status", "Actions"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-gray-500 text-[0.65rem] sm:text-xs font-semibold uppercase tracking-wide">
-                    {h}
-                  </th>
-                ))}
+              <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-4 py-3.5">Record ID</th>
+                <th className="px-4 py-3.5">Patient Details</th>
+                <th className="px-4 py-3.5">Age / Gender</th>
+                <th className="px-4 py-3.5">Blood Type</th>
+                <th className="px-4 py-3.5">Barangay</th>
+                <th className="px-4 py-3.5">Contact Number</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-8 text-gray-400 text-sm">
-                    No patients found. {patients.length === 0 ? "Click 'Register Patient' to add a new patient." : "Try adjusting your search."}
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">No matching patient records found</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Try refining your search or add a new patient</p>
                   </td>
                 </tr>
               ) : (
                 paginated.map((p, i) => (
-                  <tr 
-                    key={p.id} 
-                    className={`border-b border-gray-50 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group ${i % 2 === 0 ? "" : "bg-gray-50/30"}`}
-                    onClick={() => setModal({ mode: "view", patient: p })}
+                  <tr
+                    key={p.id}
+                    onClick={() => navigate(`/patients/${p.id}`)}
+                    className="hover:bg-sky-50/40 transition-colors cursor-pointer group"
                   >
-                    <td className="px-4 py-3">
-                      <span className="text-blue-600 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-semibold" title={p.id}>{formatEntityId(p.id, "PAT")}</span>
+                    <td className="px-4 py-3.5 font-mono text-xs font-bold text-sky-600">
+                      {formatEntityId(p.id, "PAT")}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 flex-shrink-0 group-hover:scale-110 transition-transform text-[0.55rem] sm:text-xs font-bold">
+
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-100 to-sky-200 text-sky-700 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
                           {p.firstName?.[0]}{p.lastName?.[0]}
                         </div>
-                        <span className="text-gray-800 group-hover:text-blue-700 transition-colors text-xs sm:text-sm font-medium">{p.firstName} {p.lastName}</span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 group-hover:text-sky-600 transition-colors truncate">
+                            {p.firstName} {p.lastName}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {p.philhealth ? `PhilHealth: ${p.philhealth}` : "No PhilHealth recorded"}
+                          </p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{p.dob}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{p.gender}</td>
-                    <td className="px-4 py-3">
-                      <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded transition-transform group-hover:scale-105 inline-block text-[0.65rem] sm:text-xs font-medium">{p.bloodType}</span>
+
+                    <td className="px-4 py-3.5 text-slate-600 font-medium">
+                      <span>{calcAge(p.dob)}</span>
+                      <span className="text-slate-300 mx-1.5">&bull;</span>
+                      <span className="text-slate-500 text-xs">{p.gender || "—"}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{p.barangay}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{p.contact}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full transition-all group-hover:shadow-sm text-[0.6rem] sm:text-xs font-medium ${p.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+
+                    <td className="px-4 py-3.5">
+                      {p.bloodType ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
+                          {p.bloodType}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-slate-700 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="truncate max-w-[130px]">{p.barangay || "—"}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-slate-600 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span>{p.contact || "—"}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${p.status === "Active"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${p.status === "Active" ? "bg-emerald-500" : "bg-slate-400"
+                            }`}
+                        />
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "view", patient: p }); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110">
+
+                    <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => navigate(`/patients/${p.id}`)}
+                          className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
+                          title="Open Full Clinical Record"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setModal({ mode: "edit", patient: p }); }} className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all duration-200 hover:scale-110">
+                        <button
+                          onClick={() => setModal({ mode: "edit", patient: p })}
+                          className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+                          title="Edit Demographic Data"
+                        >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => navigate(`/consultations?patientId=${p.id}`)}
+                          className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                          title="New Consultation"
+                        >
+                          <Stethoscope className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -619,84 +965,117 @@ export function PatientsPage() {
           </table>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="lg:hidden divide-y divide-gray-100">
+        {/* Mobile View */}
+        <div className="lg:hidden divide-y divide-slate-100">
           {filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No patients found. {patients.length === 0 ? "Click 'Register Patient' to add a new patient." : "Try adjusting your search."}
+            <div className="text-center py-10 text-slate-400 text-xs">
+              No matching patient records found
             </div>
           ) : (
             paginated.map((p) => (
-            <div key={p.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-all">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center text-blue-700 flex-shrink-0 text-xs font-bold">
-                    {p.firstName[0]}{p.lastName[0]}
+              <div key={p.id} className="p-4 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-100 to-sky-200 text-sky-700 flex items-center justify-center font-bold text-xs shadow-2xs">
+                      {p.firstName?.[0]}{p.lastName?.[0]}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">
+                        {p.firstName} {p.lastName}
+                      </p>
+                      <p className="text-xs font-mono font-semibold text-sky-600">
+                        {formatEntityId(p.id, "PAT")}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.status === "Active"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-slate-100 text-slate-600"
+                      }`}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-slate-600">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{p.barangay || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{p.contact || "—"}</span>
                   </div>
                   <div>
-                    <p className="text-gray-800 font-semibold text-sm">{p.firstName} {p.lastName}</p>
-                    <p className="text-blue-600 text-xs font-medium" title={p.id}>{formatEntityId(p.id, "PAT")}</p>
+                    <span className="text-slate-400">Age: </span>
+                    <span className="font-semibold">{calcAge(p.dob)} ({p.gender || "—"})</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Blood: </span>
+                    <span className="font-bold text-rose-600">{p.bloodType || "N/A"}</span>
                   </div>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[0.6rem] font-medium ${p.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                  {p.status}
-                </span>
+
+                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => navigate(`/patients/${p.id}`)}
+                    className="flex-1 py-1.5 text-center bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    View Record
+                  </button>
+                  <button
+                    onClick={() => setModal({ mode: "edit", patient: p })}
+                    className="flex-1 py-1.5 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => navigate(`/consultations?patientId=${p.id}`)}
+                    className="p-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs hover:bg-purple-100 transition-colors"
+                    title="New Consultation"
+                  >
+                    <Stethoscope className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-gray-400">Barangay:</span>
-                  <span className="text-gray-600 ml-1">{p.barangay}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Blood:</span>
-                  <span className="text-violet-600 ml-1 font-medium">{p.bloodType}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Gender:</span>
-                  <span className="text-gray-600 ml-1">{p.gender}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Contact:</span>
-                  <span className="text-gray-600 ml-1">{p.contact}</span>
-                </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button onClick={() => setModal({ mode: "view", patient: p })} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-blue-600 bg-blue-50 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
-                  <Eye className="w-3.5 h-3.5" /> View
-                </button>
-                <button onClick={() => setModal({ mode: "edit", patient: p })} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-teal-600 bg-teal-50 rounded-lg text-xs font-medium hover:bg-teal-100 transition-colors">
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </button>
-              </div>
-            </div>
-          ))
+            ))
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-          <p className="text-gray-400 text-xs sm:text-sm">Showing {paginated.length} of {filtered.length} patients</p>
-          <div className="flex items-center gap-1">
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+          <p className="text-xs text-slate-500">
+            Showing <span className="font-bold text-slate-800">{paginated.length}</span> of{" "}
+            <span className="font-bold text-slate-800">{filtered.length}</span> patient records
+          </p>
+
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={safeCurrentPage === 1}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
+
             {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((n) => (
               <button
                 key={n}
                 onClick={() => setCurrentPage(n)}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all duration-200 text-xs sm:text-sm ${n === safeCurrentPage ? "bg-blue-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-100"}`}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${n === safeCurrentPage
+                    ? "bg-sky-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-200/60"
+                  }`}
               >
                 {n}
               </button>
             ))}
+
             <button
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={safeCurrentPage === totalPages}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -725,3 +1104,4 @@ export function PatientsPage() {
     </div>
   );
 }
+

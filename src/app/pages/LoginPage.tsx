@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, EyeOff, Lock, User, AlertTriangle } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  User,
+  AlertTriangle,
+  ShieldCheck,
+  Building2,
+  Activity,
+  HeartPulse,
+  Sparkles,
+  Info,
+  CheckCircle2,
+} from "lucide-react";
 import { useAuth } from "../hooks";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { validateLoginForm } from "../utils/validation";
@@ -13,60 +26,47 @@ export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loadingState, setLoadingState] = useState<'idle' | 'authenticating' | 'success'>('idle');
+  const [loadingState, setLoadingState] = useState<"idle" | "authenticating" | "success">("idle");
   const [loggedInUserName, setLoggedInUserName] = useState("");
   const [redirectPath, setRedirectPath] = useState("/dashboard");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted"); // Debug log
     setError("");
 
     // Validate input
     const validation = validateLoginForm({ username, password });
     if (!validation.success) {
       setError(validation.errors[0]?.message || "Invalid input");
-      console.log("Validation failed:", validation.errors); // Debug log
       return;
     }
 
     // Check if rate limited
     if (rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil) {
       setError(`Too many failed attempts. Try again at ${rateLimitInfo.lockedUntil.toLocaleTimeString()}`);
-      console.log("Rate limited"); // Debug log
       return;
     }
 
     try {
-      // Show authenticating loading screen
-      console.log("Setting loading state to authenticating"); // Debug log
-      setLoadingState('authenticating');
-      
-      // Call backend authentication
+      setLoadingState("authenticating");
+
       const result = await login({ username: validation.data!.username, password: validation.data!.password });
-      
-      console.log("Login result:", result); // Debug log
-      
+
       if (result.success) {
-        const displayName = result.user?.username 
+        const displayName = result.user?.username
           ? result.user.username.charAt(0).toUpperCase() + result.user.username.slice(1)
           : username;
         setLoggedInUserName(displayName);
         setRedirectPath(result.user?.role === "Admin" ? "/sysadmin/rbac" : "/dashboard");
-        // Switch to success mode
-        console.log("Login successful, switching to success mode"); // Debug log
-        setLoadingState('success');
+        setLoadingState("success");
       } else {
-        // Hide loading screen and show error
-        console.log("Login failed, showing error:", result.error); // Debug log
-        setLoadingState('idle');
-        setError(result.error || "Invalid credentials.");
+        setLoadingState("idle");
+        setError(result.error || "Invalid username or password. Please verify and try again.");
       }
     } catch (err) {
-      // Handle unexpected errors
-      console.error("Unexpected login error:", err); // Debug log
-      setLoadingState('idle');
-      setError("An error occurred during login. Please try again.");
+      console.error("Unexpected login error:", err);
+      setLoadingState("idle");
+      setError("An unexpected network error occurred. Please check your connection.");
     }
   };
 
@@ -74,143 +74,227 @@ export function LoginPage() {
     navigate(redirectPath);
   };
 
-  // Show loading screen when authenticating or successful
-  if (loadingState !== 'idle') {
+  // Quick fill helper for clinical or admin login
+  const fillCredentials = (role: "admin" | "employee") => {
+    if (role === "admin") {
+      setUsername("admin");
+      setPassword("Admin@1234");
+    } else {
+      setUsername("employee");
+      setPassword("Employee@1234");
+    }
+    setError("");
+  };
+
+  if (loadingState !== "idle") {
     return (
-      <LoadingScreen 
-        userName={loggedInUserName} 
+      <LoadingScreen
+        userName={loggedInUserName}
         onComplete={handleLoadingComplete}
-        duration={2500}
+        duration={2200}
         mode={loadingState}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
-      {/* Subtle Background Pattern */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full" style={{ 
-          backgroundImage: 'radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.2) 2%, transparent 0%)',
-          backgroundSize: '50px 50px'
-        }} />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#071326] via-[#0D2447] to-[#0A192F] flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden font-sans">
+      {/* Ambient Lighting Orbs */}
+      <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/15 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] right-[-10%] w-[550px] h-[550px] rounded-full bg-cyan-500/15 blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-indigo-500/10 blur-[160px] pointer-events-none" />
 
-      <div className="relative w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 sm:gap-10 lg:gap-16">
+      {/* Subtle Grid Pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundSize: "36px 36px",
+        }}
+      />
 
-        {/* LEFT — Logo & Branding */}
-        <div className="flex-1 flex flex-col items-center text-center animate-fade-in-up">
-          {/* Logo - Increased by 80% */}
-          <div className="mb-5 sm:mb-7">
-            <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-60 md:h-60 lg:w-72 lg:h-72 bg-white/95 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden hover-lift transition-all duration-300 cursor-default">
-              <img src={logoImage} alt="Health Watch Olongapo" className="w-full h-full object-cover" />
+      <div className="relative w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-16 z-10">
+        {/* LEFT — Branding, City Health Info & Clinical Trust Badges */}
+        <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left animate-fade-in-up">
+          {/* Logo container with ambient glow */}
+          <div className="relative mb-6 group cursor-default">
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-blue-500 to-cyan-400 opacity-30 blur-md group-hover:opacity-60 transition duration-500" />
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-1 overflow-hidden ring-1 ring-white/30">
+              <img
+                src={logoImage}
+                alt="Health Watch Olongapo"
+                className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
+              />
             </div>
           </div>
 
-          {/* Title - Increased by 80% */}
-          <h1 className="text-white mb-2 sm:mb-3 font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight">
-            Health Watch<br />Olongapo
+          {/* Title with Gradient Accent */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-cyan-300 text-xs font-semibold mb-3">
+            <HeartPulse className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            City Health Office Digital Portal
+          </div>
+
+          <h1 className="text-white font-extrabold text-3xl sm:text-4xl lg:text-5xl leading-tight tracking-tight mb-3">
+            Health Watch <br />
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-indigo-200 bg-clip-text text-transparent">
+              Olongapo City
+            </span>
           </h1>
-          
-          {/* Subtitle - Increased by 80% */}
-          <p className="text-blue-100 font-medium mb-5 sm:mb-7 text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed">
-            Barangay Health Center<br />Management System
+
+          <p className="text-slate-300 text-sm sm:text-base font-normal max-w-md leading-relaxed mb-8">
+            Integrated Barangay Health Center Management & Electronic Medical Records (EMR) System.
           </p>
 
-          {/* Decorative divider - Hidden on small screens */}
-          <div className="hidden sm:flex items-center gap-3">
-            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
-            <span className="text-blue-200 font-medium text-xs sm:text-sm">Olongapo City Health Office</span>
-            <div className="w-8 sm:w-10 h-0.5 bg-blue-300 rounded-full" />
+          {/* Trust Highlights Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/20 text-cyan-300 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">RA 10173 Compliant</p>
+                <p className="text-[11px] text-slate-400">Data Privacy & Security</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm">
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">17 Health Centers</p>
+                <p className="text-[11px] text-slate-400">Barangay Triage Network</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT — Login Card - Increased by 80% */}
-        <div className="w-full sm:w-[450px] lg:w-[480px] flex-shrink-0 animate-fade-in-up animation-delay-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8">
+        {/* RIGHT — Elevated Login Card */}
+        <div className="w-full sm:w-[460px] lg:w-[480px] flex-shrink-0 animate-fade-in-up animation-delay-200">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl p-7 sm:p-9 border border-white/40 ring-1 ring-black/5">
             {/* Header */}
-            <h2 className="text-gray-900 mb-1.5 sm:mb-2 font-bold text-xl sm:text-2xl">
-              Sign In
-            </h2>
-            <p className="text-gray-500 mb-5 sm:mb-6 font-medium text-sm sm:text-base">
-              Enter your credentials to access the system
-            </p>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-slate-900 font-extrabold text-2xl tracking-tight">
+                  Sign In
+                </h2>
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Secure System
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm font-medium">
+                Enter your authorized clinical credentials to access patient records.
+              </p>
+            </div>
 
-            <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
-              {/* Username */}
-              <div className="animate-fade-in animation-delay-300">
-                <label className="block text-gray-700 mb-1.5 font-semibold text-sm sm:text-base">
-                  Username
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Username Field */}
+              <div>
+                <label className="block text-slate-700 mb-1.5 font-bold text-xs uppercase tracking-wider">
+                  Username or Staff ID
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors group-focus-within:text-blue-600" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-blue-600" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-sm sm:text-base"
+                    autoComplete="username"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                   />
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="animate-fade-in animation-delay-400">
-                <label className="block text-gray-700 mb-1.5 font-semibold text-sm sm:text-base">
-                  Password
-                </label>
+              {/* Password Field */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-slate-700 font-bold text-xs uppercase tracking-wider">
+                    Password
+                  </label>
+                </div>
                 <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-colors group-focus-within:text-blue-600" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-blue-600" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 font-medium text-sm sm:text-base"
+                    placeholder="••••••••••••"
+                    autoComplete="current-password"
+                    className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded transition-colors"
+                    title={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Error */}
+              {/* Error Message Banner */}
               {error && (
-                <div className="bg-red-50 border-2 border-red-200 text-red-600 px-4 py-3 rounded-xl animate-fade-in-down font-medium text-sm sm:text-base flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl animate-fade-in-down font-medium text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Rate Limit Warning */}
               {rateLimitInfo.remainingAttempts < 5 && rateLimitInfo.remainingAttempts > 0 && (
-                <div className="bg-amber-50 border-2 border-amber-200 text-amber-700 px-4 py-3 rounded-xl animate-fade-in font-medium text-xs sm:text-sm flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>Warning: {rateLimitInfo.remainingAttempts} login attempt{rateLimitInfo.remainingAttempts !== 1 ? 's' : ''} remaining before lockout.</span>
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3.5 py-2.5 rounded-xl animate-fade-in font-medium text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    Warning: {rateLimitInfo.remainingAttempts} login attempt
+                    {rateLimitInfo.remainingAttempts !== 1 ? "s" : ""} remaining before lockout.
+                  </span>
                 </div>
               )}
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loadingState !== 'idle' || (rateLimitInfo.lockedUntil !== null && new Date() < rateLimitInfo.lockedUntil)}
-                className="w-full py-3 sm:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md press-effect font-bold text-sm sm:text-base"
+                disabled={loadingState !== "idle" || (rateLimitInfo.lockedUntil !== null && new Date() < rateLimitInfo.lockedUntil)}
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white rounded-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2 font-bold text-sm shadow-md shadow-blue-600/30 flex items-center justify-center gap-2"
               >
-                {rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil ? "Account Locked" : "Sign In"}
+                <span>{rateLimitInfo.lockedUntil && new Date() < rateLimitInfo.lockedUntil ? "Account Locked" : "Sign In to HealthWatch"}</span>
               </button>
             </form>
 
-            {/* Footer */}
-            <div className="mt-6 pt-5 border-t border-gray-100 text-center text-gray-400 font-medium text-xs sm:text-sm">
-              Health Watch Olongapo © 2026 — All rights reserved
+            {/* Quick-Fill Demo Helpers for Development / Evaluation */}
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
+                <span className="font-semibold text-slate-600">Quick Test Credentials:</span>
+                <span className="text-[10px] text-slate-400">Click to autofill</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => fillCredentials("employee")}
+                  className="py-1.5 px-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition-colors text-center"
+                >
+                  Health Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillCredentials("admin")}
+                  className="py-1.5 px-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition-colors text-center"
+                >
+                  System Admin
+                </button>
+              </div>
+            </div>
+
+            {/* Compliance Footer */}
+            <div className="mt-5 text-center text-slate-400 text-[11px] leading-tight">
+              HealthWatch Olongapo • Authorized Personnel Only
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
+}
