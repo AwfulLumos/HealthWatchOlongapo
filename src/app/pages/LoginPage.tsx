@@ -7,12 +7,8 @@ import {
   User,
   AlertTriangle,
   ShieldCheck,
-  Building2,
   Activity,
   HeartPulse,
-  Sparkles,
-  Info,
-  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "../hooks";
 import { LoadingScreen } from "../components/LoadingScreen";
@@ -72,18 +68,6 @@ export function LoginPage() {
 
   const handleLoadingComplete = () => {
     navigate(redirectPath);
-  };
-
-  // Quick fill helper for clinical or admin login
-  const fillCredentials = (role: "admin" | "employee") => {
-    if (role === "admin") {
-      setUsername("admin");
-      setPassword("Admin@1234");
-    } else {
-      setUsername("employee");
-      setPassword("Employee@1234");
-    }
-    setError("");
   };
 
   if (loadingState !== "idle") {
@@ -264,30 +248,6 @@ export function LoginPage() {
               </button>
             </form>
 
-            {/* Quick-Fill Demo Helpers for Development / Evaluation */}
-            <div className="mt-5 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
-                <span className="font-semibold text-slate-600">Quick Test Credentials:</span>
-                <span className="text-[10px] text-slate-400">Click to autofill</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => fillCredentials("employee")}
-                  className="py-1.5 px-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition-colors text-center"
-                >
-                  Health Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillCredentials("admin")}
-                  className="py-1.5 px-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 transition-colors text-center"
-                >
-                  System Admin
-                </button>
-              </div>
-            </div>
-
             {/* Compliance Footer */}
             <div className="mt-5 text-center text-slate-400 text-[11px] leading-tight">
               HealthWatch Olongapo • Authorized Personnel Only
@@ -297,4 +257,4 @@ export function LoginPage() {
       </div>
     </div>
   );
-}
+}

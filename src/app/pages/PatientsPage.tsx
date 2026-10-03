@@ -4,7 +4,6 @@ import {
   Plus,
   Eye,
   Edit2,
-  Filter,
   ChevronLeft,
   ChevronRight,
   X,
@@ -12,18 +11,17 @@ import {
   Heart,
   MapPin,
   Phone,
-  Calendar,
   UserCheck,
   AlertCircle,
-  FileText,
   Stethoscope,
   ExternalLink,
   ShieldCheck,
-  RefreshCw
+  Trash2,
 } from "lucide-react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate } from "react-router";
 import { patientService } from "../services/patientService";
 import { barangayService } from "../services";
+import { OLONGAPO_BARANGAYS } from "../constants";
 import type { Patient } from "../models";
 import { PatientsSkeleton } from "../components/skeletons/PatientsSkeleton";
 import { StatusModal } from "../components/feedback/StatusModal";
@@ -36,13 +34,6 @@ const GENDERS = ["", "Male", "Female"] as const;
 const CIVIL_STATUSES = ["", "Single", "Married", "Widowed", "Divorced", "Separated"] as const;
 const PATIENT_QUERY_LIMIT = 100;
 const PATIENT_MAX_PAGES = 20;
-
-const OLONGAPO_BARANGAYS = [
-  "Asinan", "Banicain", "Barretto", "East Bajac-Bajac", "East Tapinac",
-  "Gordon Heights", "Kalaklan", "Mabayuan", "New Cabalan", "New Ilalim",
-  "New Kabalan", "New Kalalake", "Old Cabalan", "Pag-asa", "Santa Rita",
-  "West Bajac-Bajac", "West Tapinac"
-];
 
 function formatApiError(err: unknown): string {
   const anyErr = err as any;
@@ -115,11 +106,13 @@ function PatientModal(
     onClose,
     mode,
     onSave,
+    onDelete,
   }: {
     patient?: Patient | null;
     onClose: () => void;
     mode: PatientModalMode;
     onSave: (mode: PatientModalMode, form: Patient) => Promise<boolean>;
+    onDelete?: (patient: Patient) => void;
   }
 ) {
   const navigate = useNavigate();
@@ -129,8 +122,9 @@ function PatientModal(
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [barangays, setBarangays] = useState<Array<{ id: string; name: string }>>([]);
-  const [isLoadingBarangays, setIsLoadingBarangays] = useState(mode !== 'view');
+  const [barangays, setBarangays] = useState<Array<{ id: string; name: string }>>(() =>
+    OLONGAPO_BARANGAYS.map((name, i) => ({ id: String(i), name }))
+  );
 
   const buildForm = (): Patient => ({
     id: patient?.id ?? "",
@@ -157,36 +151,45 @@ function PatientModal(
     setForm(buildForm());
     setIsSaving(false);
     setSaveError(null);
-
-    if (mode === 'view') {
-      setIsLoadingBarangays(false);
-    } else if (!barangays.length) {
-      setIsLoadingBarangays(true);
-    }
   }, [patient, mode]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (isView) return;
-      if (barangays.length) return;
-      setIsLoadingBarangays(true);
       try {
         const list = await barangayService.getAll();
-        if (!cancelled) {
-          setBarangays(list.map((b) => ({ id: b.id, name: b.name })));
+        if (!cancelled && Array.isArray(list) && list.length > 0) {
+          const apiMap = new Map(list.map((b) => [b.name.trim().toLowerCase(), b.id]));
+          // Merge API barangays while guaranteeing all 17 official Olongapo barangays
+          const mergedNames = new Set<string>(OLONGAPO_BARANGAYS);
+          list.forEach((b) => {
+            if (b.name) mergedNames.add(b.name.trim());
+          });
+          const merged = Array.from(mergedNames)
+            .sort((a, b) => a.localeCompare(b))
+            .map((name, i) => ({
+              id: apiMap.get(name.toLowerCase()) || String(i),
+              name,
+            }));
+          setBarangays(merged);
         }
       } catch {
-        // Fallback to static list
-        setBarangays(OLONGAPO_BARANGAYS.map((name, i) => ({ id: String(i), name })));
-      } finally {
-        if (!cancelled) setIsLoadingBarangays(false);
+        // Defaults to all 17 official barangays
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isView, barangays.length]);
+  }, [isView]);
+
+  const barangayOptions = useMemo(() => {
+    const set = new Set<string>(OLONGAPO_BARANGAYS);
+    barangays.forEach((b) => {
+      if (b.name) set.add(b.name);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [barangays]);
 
   const handleSubmit = async () => {
     const missing: string[] = [];
@@ -418,7 +421,7 @@ function PatientModal(
 
               <div>
                 <label className="block text-slate-600 text-xs font-semibold mb-1">
-                  Barangay (Olongapo City)
+                  Barangay (Olongapo City) {!isView && <span className="text-rose-500">*</span>}
                 </label>
                 {isView ? (
                   <p className="text-slate-900 font-semibold py-2 px-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
@@ -429,12 +432,12 @@ function PatientModal(
                     value={form.barangay || ""}
                     onChange={(e) => setForm({ ...form, barangay: e.target.value })}
                     className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs sm:text-sm font-medium transition-all"
-                    disabled={isSaving || isLoadingBarangays}
+                    disabled={isSaving}
                   >
                     <option value="">
-                      {isLoadingBarangays ? "Loading barangays..." : "Select Barangay"}
+                      Select Barangay ({OLONGAPO_BARANGAYS.length} Barangays)
                     </option>
-                    {(barangays.length ? barangays.map(b => b.name) : OLONGAPO_BARANGAYS).map((name) => (
+                    {barangayOptions.map((name) => (
                       <option key={name} value={name}>
                         {name}
                       </option>
@@ -541,6 +544,18 @@ function PatientModal(
               <ExternalLink className="w-4 h-4" />
               Open Full Clinical Profile
             </button>
+          ) : mode === "edit" && patient?.id && onDelete ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onDelete(patient);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs sm:text-sm font-semibold border border-rose-200 transition-colors"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              Delete Record
+            </button>
           ) : (
             <div />
           )}
@@ -578,6 +593,77 @@ function PatientModal(
   );
 }
 
+function DeleteConfirmModal({
+  patient,
+  isOpen,
+  isDeleting,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  patient: Patient | null;
+  isOpen: boolean;
+  isDeleting: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!isOpen || !patient) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 p-6 sm:p-7 max-w-md w-full animate-scale-in">
+        <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 shadow-sm shadow-rose-500/20">
+          <Trash2 className="w-7 h-7" />
+        </div>
+
+        <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 text-center mb-1.5">
+          Delete Patient Record?
+        </h3>
+
+        <p className="text-slate-500 text-xs sm:text-sm text-center mb-4 leading-relaxed">
+          Are you sure you want to permanently delete the clinical record for{" "}
+          <span className="font-bold text-slate-800">
+            {patient.firstName} {patient.lastName}
+          </span>{" "}
+          (<span className="font-mono text-sky-600 font-semibold">{formatEntityId(patient.id, "PAT")}</span>)?
+          This action cannot be undone.
+        </p>
+
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2 mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="flex gap-2.5 justify-end pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-rose-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : "Yes, Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PatientsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -586,6 +672,9 @@ export function PatientsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ mode: "view" | "add" | "edit"; patient?: Patient } | null>(null);
   const [successModal, setSuccessModal] = useState<{ title: string; message?: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Patient | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
   const pageSize = 10;
@@ -665,6 +754,29 @@ export function PatientsPage() {
     }
 
     return false;
+  };
+
+  const handleDeletePatient = async (patient: Patient) => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const success = await patientService.delete(patient.id);
+      if (success) {
+        setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+        setDeleteConfirm(null);
+        setSuccessModal({
+          title: "Patient Record Deleted",
+          message: `${patient.firstName} ${patient.lastName}'s clinical record has been removed.`,
+        });
+      } else {
+        setDeleteError("Failed to delete patient record. Please check your network and session.");
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to delete patient record.";
+      setDeleteError(msg);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Filter pipeline
@@ -862,7 +974,7 @@ export function PatientsPage() {
                   </td>
                 </tr>
               ) : (
-                paginated.map((p, i) => (
+                paginated.map((p) => (
                   <tr
                     key={p.id}
                     onClick={() => navigate(`/patients/${p.id}`)}
@@ -921,8 +1033,8 @@ export function PatientsPage() {
                     <td className="px-4 py-3.5">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${p.status === "Active"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
                           }`}
                       >
                         <span
@@ -955,6 +1067,13 @@ export function PatientsPage() {
                           title="New Consultation"
                         >
                           <Stethoscope className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(p)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                          title="Delete Patient Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -990,8 +1109,8 @@ export function PatientsPage() {
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.status === "Active"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-100 text-slate-600"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-slate-100 text-slate-600"
                       }`}
                   >
                     {p.status}
@@ -1037,6 +1156,13 @@ export function PatientsPage() {
                   >
                     <Stethoscope className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={() => setDeleteConfirm(p)}
+                    className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs transition-colors"
+                    title="Delete Patient Record"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))
@@ -1064,8 +1190,8 @@ export function PatientsPage() {
                 key={n}
                 onClick={() => setCurrentPage(n)}
                 className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${n === safeCurrentPage
-                    ? "bg-sky-600 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-200/60"
+                  ? "bg-sky-600 text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-200/60"
                   }`}
               >
                 {n}
@@ -1089,8 +1215,21 @@ export function PatientsPage() {
           patient={modal.patient}
           onClose={() => setModal(null)}
           onSave={handleSavePatient}
+          onDelete={(p) => setDeleteConfirm(p)}
         />
       )}
+
+      <DeleteConfirmModal
+        patient={deleteConfirm}
+        isOpen={Boolean(deleteConfirm)}
+        isDeleting={isDeleting}
+        error={deleteError}
+        onConfirm={() => deleteConfirm && handleDeletePatient(deleteConfirm)}
+        onCancel={() => {
+          setDeleteConfirm(null);
+          setDeleteError(null);
+        }}
+      />
 
       {successModal && (
         <StatusModal
