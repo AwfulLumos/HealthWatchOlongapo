@@ -1,5 +1,15 @@
-import { PrismaClient, UserRole, StaffRole, AccountStatus, Gender, CivilStatus, PatientStatus, AppointmentStatus, ConsultationType, ConsultationStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+
+const UserRole = { Admin: 'Admin', Employee: 'Employee' } as const;
+const StaffRole = { Doctor: 'Doctor', Nurse: 'Nurse', Midwife: 'Midwife', BHW: 'BHW' } as const;
+const AccountStatus = { Active: 'Active', Inactive: 'Inactive' } as const;
+const PatientStatus = { Active: 'Active', Inactive: 'Inactive' } as const;
+const Gender = { Male: 'Male', Female: 'Female' } as const;
+const CivilStatus = { Single: 'Single', Married: 'Married', Widowed: 'Widowed', Divorced: 'Divorced', Separated: 'Separated' } as const;
+const AppointmentStatus = { Pending: 'Pending', Confirmed: 'Confirmed', Cancelled: 'Cancelled', Completed: 'Completed' } as const;
+const ConsultationType = { Regular: 'Regular', FollowUp: 'FollowUp', Emergency: 'Emergency' } as const;
+const ConsultationStatus = { InProgress: 'InProgress', Completed: 'Completed', Referred: 'Referred' } as const;
 
 const prisma = new PrismaClient();
 
@@ -7,38 +17,35 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // Create Barangays
-  const barangays = await Promise.all([
-    prisma.barangay.upsert({
-      where: { name: 'Asinan' },
-      update: {},
-      create: { name: 'Asinan', zipCode: '2200' },
-    }),
-    prisma.barangay.upsert({
-      where: { name: 'Banicain' },
-      update: {},
-      create: { name: 'Banicain', zipCode: '2200' },
-    }),
-    prisma.barangay.upsert({
-      where: { name: 'Barretto' },
-      update: {},
-      create: { name: 'Barretto', zipCode: '2200' },
-    }),
-    prisma.barangay.upsert({
-      where: { name: 'East Bajac-Bajac' },
-      update: {},
-      create: { name: 'East Bajac-Bajac', zipCode: '2200' },
-    }),
-    prisma.barangay.upsert({
-      where: { name: 'East Tapinac' },
-      update: {},
-      create: { name: 'East Tapinac', zipCode: '2200' },
-    }),
-    prisma.barangay.upsert({
-      where: { name: 'Gordon Heights' },
-      update: {},
-      create: { name: 'Gordon Heights', zipCode: '2200' },
-    }),
-  ]);
+  const barangayNames = [
+    'Asinan',
+    'Banicain',
+    'Barretto',
+    'East Bajac-Bajac',
+    'East Tapinac',
+    'Gordon Heights',
+    'Kalaklan',
+    'Mabayuan',
+    'New Cabalan',
+    'New Ilalim',
+    'New Kababae',
+    'New Kalalake',
+    'Old Cabalan',
+    'Pag-asa',
+    'Santa Rita',
+    'West Bajac-Bajac',
+    'West Tapinac',
+  ];
+
+  const barangays = await Promise.all(
+    barangayNames.map((name, i) =>
+      prisma.barangay.upsert({
+        where: { name },
+        update: {},
+        create: { id: `brgy-${i + 1}`, name, zipCode: '2200' },
+      })
+    )
+  );
   console.log(`✅ Created ${barangays.length} barangays`);
 
   // Create Stations
